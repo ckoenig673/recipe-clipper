@@ -1,0 +1,193 @@
+{
+  "title": "Crock Pot Beef Stroganoff",
+  "ingredients": [
+    "2 pounds beef stew meat ( (or chuck roast, cut into chunks))",
+    "1 small yellow onion, sliced",
+    "2 cups sliced mushrooms ((optional))",
+    "2 cloves garlic, minced",
+    "10.5 ounces cream of mushroom soup",
+    "1 cup beef broth ((can use low or no sodium))",
+    "1 Tablespoon Worcestershire sauce",
+    "1 teaspoon Dijon mustard",
+    "1 teaspoon paprika",
+    "½ teaspoon salt",
+    "½ teaspoon black pepper",
+    "8 ounce block cream cheese, softened and cubed",
+    "1 cup sour cream",
+    "12 ounce bag wide egg noodles, cooked and drained",
+    "fresh parsley, chopped ((optional, for serving))"
+  ],
+  "instructions": [
+    "To a 5-6 quart slow cooker, add 2 pounds beef stew meat, 1 small yellow onion, sliced, 2 cups sliced mushrooms, 2 cloves garlic, minced, 10.5 ounces cream of mushroom soup, 1 cup beef broth, 1 Tablespoon Worcestershire sauce, 1 teaspoon Dijon mustard, 1 teaspoon paprika, ½ teaspoon salt and ½ teaspoon black pepper. Stir together.",
+    "Cover and cook on low for 8 hours or high for 3–4 hours (although high is not recommended as the meat won’t be quite as tender), until the beef is fully cooked and is tender.",
+    "NOTE: Do not open the lid to keep checking on it or to stir it. It is not necessary and will result in the meat coming out tough. Just set it and forget it.",
+    "About 20 minutes before serving, stir in 8 ounce block cream cheese, softened and cubed and 1 cup sour cream until smooth and creamy. This might take a few minutes for everything to melt and get incorporated.",
+    "Add in 12 ounce bag wide egg noodles, cooked and drained and stir to coat.",
+    "Garnish with fresh parsley, chopped and serve warm."
+  ],
+  "servings": "6",
+  "prep_time": "15 minutes",
+  "cook_time": "8 hours",
+  "total_time": "8h 15m",
+  "prep_minutes": 15,
+  "cook_minutes": 480,
+  "total_minutes": 495,
+  "ingredient_groups": [
+    {
+      "title": "",
+      "items": [
+        "2 pounds beef stew meat ( (or chuck roast, cut into chunks))",
+        "1 small yellow onion, sliced",
+        "2 cups sliced mushrooms ((optional))",
+        "2 cloves garlic, minced",
+        "10.5 ounces cream of mushroom soup",
+        "1 cup beef broth ((can use low or no sodium))",
+        "1 Tablespoon Worcestershire sauce",
+        "1 teaspoon Dijon mustard",
+        "1 teaspoon paprika",
+        "½ teaspoon salt",
+        "½ teaspoon black pepper",
+        "8 ounce block cream cheese, softened and cubed",
+        "1 cup sour cream",
+        "12 ounce bag wide egg noodles, cooked and drained",
+        "fresh parsley, chopped ((optional, for serving))"
+      ]
+    }
+  ],
+  "instruction_groups": [
+    {
+      "title": "Instructions",
+      "steps": [
+        "To a 5-6 quart slow cooker, add 2 pounds beef stew meat, 1 small yellow onion, sliced, 2 cups sliced mushrooms, 2 cloves garlic, minced, 10.5 ounces cream of mushroom soup, 1 cup beef broth, 1 Tablespoon Worcestershire sauce, 1 teaspoon Dijon mustard, 1 teaspoon paprika, ½ teaspoon salt and ½ teaspoon black pepper. Stir together.",
+        "Cover and cook on low for 8 hours or high for 3–4 hours (although high is not recommended as the meat won’t be quite as tender), until the beef is fully cooked and is tender.",
+        "NOTE: Do not open the lid to keep checking on it or to stir it. It is not necessary and will result in the meat coming out tough. Just set it and forget it.",
+        "About 20 minutes before serving, stir in 8 ounce block cream cheese, softened and cubed and 1 cup sour cream until smooth and creamy. This might take a few minutes for everything to melt and get incorporated.",
+        "Add in 12 ounce bag wide egg noodles, cooked and drained and stir to coat.",
+        "Garnish with fresh parsley, chopped and serve warm."
+      ]
+    }
+  ],
+  "image_url": "https://www.thecountrycook.net/wp-content/uploads/2025/12/thumbnail-Crock-Pot-Beef-Stroganoff.jpg",
+  "_selected_source": "jsonld",
+  "_selected_reason": "jsonld-default",
+  "_parser_counts": {
+    "jsonld": {
+      "ingredients": 15,
+      "instructions": 6,
+      "ingredient_groups": 1,
+      "instruction_groups": 1
+    },
+    "dom": {
+      "ingredients": 0,
+      "instructions": 0,
+      "ingredient_groups": 0,
+      "instruction_groups": 0
+    },
+    "wprm": {
+      "ingredients": 0,
+      "instructions": 0,
+      "ingredient_groups": 0,
+      "instruction_groups": 0
+    }
+  },
+  "_raw_sources": {
+    "jsonld": {
+      "title": "Crock Pot Beef Stroganoff",
+      "ingredients": [
+        "2 pounds beef stew meat ( (or chuck roast, cut into chunks))",
+        "1 small yellow onion, sliced",
+        "2 cups sliced mushrooms ((optional))",
+        "2 cloves garlic, minced",
+        "10.5 ounces cream of mushroom soup",
+        "1 cup beef broth ((can use low or no sodium))",
+        "1 Tablespoon Worcestershire sauce",
+        "1 teaspoon Dijon mustard",
+        "1 teaspoon paprika",
+        "½ teaspoon salt",
+        "½ teaspoon black pepper",
+        "8 ounce block cream cheese, softened and cubed",
+        "1 cup sour cream",
+        "12 ounce bag wide egg noodles, cooked and drained",
+        "fresh parsley, chopped ((optional, for serving))"
+      ],
+      "instructions": [
+        "To a 5-6 quart slow cooker, add 2 pounds beef stew meat, 1 small yellow onion, sliced, 2 cups sliced mushrooms, 2 cloves garlic, minced, 10.5 ounces cream of mushroom soup, 1 cup beef broth, 1 Tablespoon Worcestershire sauce, 1 teaspoon Dijon mustard, 1 teaspoon paprika, ½ teaspoon salt and ½ teaspoon black pepper. Stir together.",
+        "Cover and cook on low for 8 hours or high for 3–4 hours (although high is not recommended as the meat won’t be quite as tender), until the beef is fully cooked and is tender.",
+        "NOTE: Do not open the lid to keep checking on it or to stir it. It is not necessary and will result in the meat coming out tough. Just set it and forget it.",
+        "About 20 minutes before serving, stir in 8 ounce block cream cheese, softened and cubed and 1 cup sour cream until smooth and creamy. This might take a few minutes for everything to melt and get incorporated.",
+        "Add in 12 ounce bag wide egg noodles, cooked and drained and stir to coat.",
+        "Garnish with fresh parsley, chopped and serve warm."
+      ],
+      "servings": "6",
+      "prep_time": "15 minutes",
+      "cook_time": "8 hours",
+      "total_time": "8h 15m",
+      "prep_minutes": 15,
+      "cook_minutes": 480,
+      "total_minutes": 495,
+      "ingredient_groups": [
+        {
+          "title": "",
+          "items": [
+            "2 pounds beef stew meat ( (or chuck roast, cut into chunks))",
+            "1 small yellow onion, sliced",
+            "2 cups sliced mushrooms ((optional))",
+            "2 cloves garlic, minced",
+            "10.5 ounces cream of mushroom soup",
+            "1 cup beef broth ((can use low or no sodium))",
+            "1 Tablespoon Worcestershire sauce",
+            "1 teaspoon Dijon mustard",
+            "1 teaspoon paprika",
+            "½ teaspoon salt",
+            "½ teaspoon black pepper",
+            "8 ounce block cream cheese, softened and cubed",
+            "1 cup sour cream",
+            "12 ounce bag wide egg noodles, cooked and drained",
+            "fresh parsley, chopped ((optional, for serving))"
+          ]
+        }
+      ],
+      "instruction_groups": [
+        {
+          "title": "",
+          "steps": [
+            "To a 5-6 quart slow cooker, add 2 pounds beef stew meat, 1 small yellow onion, sliced, 2 cups sliced mushrooms, 2 cloves garlic, minced, 10.5 ounces cream of mushroom soup, 1 cup beef broth, 1 Tablespoon Worcestershire sauce, 1 teaspoon Dijon mustard, 1 teaspoon paprika, ½ teaspoon salt and ½ teaspoon black pepper. Stir together.",
+            "Cover and cook on low for 8 hours or high for 3–4 hours (although high is not recommended as the meat won’t be quite as tender), until the beef is fully cooked and is tender.",
+            "NOTE: Do not open the lid to keep checking on it or to stir it. It is not necessary and will result in the meat coming out tough. Just set it and forget it.",
+            "About 20 minutes before serving, stir in 8 ounce block cream cheese, softened and cubed and 1 cup sour cream until smooth and creamy. This might take a few minutes for everything to melt and get incorporated.",
+            "Add in 12 ounce bag wide egg noodles, cooked and drained and stir to coat.",
+            "Garnish with fresh parsley, chopped and serve warm."
+          ]
+        }
+      ]
+    },
+    "dom": {
+      "ingredients": [],
+      "instructions": [],
+      "image_url": "https://www.thecountrycook.net/wp-content/uploads/2025/12/thumbnail-Crock-Pot-Beef-Stroganoff.jpg",
+      "ingredient_groups": [],
+      "instruction_groups": [],
+      "prep_time": "15 minutes minutes",
+      "cook_time": "8 hours hours",
+      "total_time": "8 hours hours 15 minutes minutes Serving",
+      "prep_minutes": 15,
+      "cook_minutes": 480,
+      "total_minutes": 495
+    },
+    "wprm": {
+      "title": "Crock Pot Beef Stroganoff",
+      "ingredients": [],
+      "instructions": [],
+      "image_url": "https://www.thecountrycook.net/wp-content/uploads/2025/12/thumbnail-Crock-Pot-Beef-Stroganoff.jpg",
+      "ingredient_groups": [],
+      "instruction_groups": [],
+      "servings": "6",
+      "prep_time": "15 minutes",
+      "cook_time": "8 hours",
+      "total_time": "8h 15m",
+      "prep_minutes": 15,
+      "cook_minutes": 480,
+      "total_minutes": 495
+    }
+  }
+}

@@ -1,0 +1,90 @@
+name: recipe-clipper
+
+services:
+  backend:
+    build: ./backend
+    container_name: recipe-clipper-backend
+    ports:
+      - "${BACKEND_PORT:-8015}:8000"
+    environment:
+      # Backend persistence and auth
+      - RECIPES_DB_PATH=${RECIPES_DB_PATH:-/app/data/recipes.db}
+      - AUTH_SESSION_TTL_HOURS=${AUTH_SESSION_TTL_HOURS:-168}
+      - AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME:-recipe_clipper_session}
+      - AUTH_COOKIE_SECURE=${AUTH_COOKIE_SECURE:-false}
+      - AUTH_COOKIE_DOMAIN=${AUTH_COOKIE_DOMAIN:-}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-http://localhost:8010,http://127.0.0.1:8010}
+      - AUTH_BOOTSTRAP_ADMIN_EMAIL=${AUTH_BOOTSTRAP_ADMIN_EMAIL:-admin@example.local}
+      - AUTH_BOOTSTRAP_ADMIN_PASSWORD=${AUTH_BOOTSTRAP_ADMIN_PASSWORD:-change-me-now}
+
+      # Optional Ollama-based AI enhancement
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3:latest}
+      - OLLAMA_TIMEOUT_SECONDS=${OLLAMA_TIMEOUT_SECONDS:-600}
+
+      # Worker endpoints resolved by Compose service name.
+      # SOCIAL_DOWNLOADER_URL and WHISPER_PROCESSOR_URL keep legacy names for compatibility.
+      - OCR_WORKER_URL=${OCR_WORKER_URL:-http://ocr:8787/ocr/image}
+      - OCR_WORKER_TIMEOUT_SECONDS=${OCR_WORKER_TIMEOUT_SECONDS:-600}
+      - AI_REVIEW_ENABLED=${AI_REVIEW_ENABLED:-true}
+      - AI_REVIEW_POLL_SECONDS=${AI_REVIEW_POLL_SECONDS:-12}
+      - SOCIAL_DOWNLOADER_URL=${SOCIAL_DOWNLOADER_URL:-http://social:8790/download/social-video}
+      - SOCIAL_VIDEO_TMP_DIR=${SOCIAL_VIDEO_TMP_DIR:-/app/data/social-downloads}
+      - WHISPER_PROCESSOR_URL=${WHISPER_PROCESSOR_URL:-http://whisper:8791/transcribe}
+    volumes:
+      # Shared application data and downloaded media
+      - ./data:/app/data:rw
+      - ./data/social-downloads:/app/data/social-downloads:rw
+    depends_on:
+      - ocr
+      - social
+      - whisper
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Replaces cache-bust placeholders in frontend build artifacts.
+        CACHE_BUST_VERSION: ${CACHE_BUST_VERSION:-20260511-1}
+    container_name: recipe-clipper-frontend
+    ports:
+      - "${FRONTEND_PORT:-8010}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  ocr:
+    build: ./ocr-worker
+    container_name: recipe-clipper-ocr
+    ports:
+      - "${OCR_WORKER_PORT:-8787}:8787"
+    restart: unless-stopped
+
+  social:
+    build: ./social-worker
+    container_name: recipe-clipper-social
+    ports:
+      # Legacy-compatible published port variable for the current social worker.
+      - "${SOCIAL_DOWNLOADER_PORT:-8790}:8790"
+    environment:
+      # Shared download location used by social and whisper workers.
+      - SOCIAL_DOWNLOADER_OUTPUT_DIR=${SOCIAL_DOWNLOADER_OUTPUT_DIR:-/app/data/social-downloads}
+    volumes:
+      - ./data/social-downloads:/app/data/social-downloads:rw
+    restart: unless-stopped
+
+  whisper:
+    build: ./whisper-worker
+    container_name: recipe-clipper-whisper
+    ports:
+      # Legacy-compatible published port variable for the current whisper worker.
+      - "${WHISPER_PROCESSOR_PORT:-8791}:8791"
+    environment:
+      # Default transcription settings; requests can still override these per job.
+      - WHISPER_MODEL=${WHISPER_MODEL:-}
+      - WHISPER_DEVICE=${WHISPER_DEVICE:-}
+      - WHISPER_COMPUTE_TYPE=${WHISPER_COMPUTE_TYPE:-}
+    volumes:
+      - ./data/social-downloads:/app/data/social-downloads:rw
+    restart: unless-stopped

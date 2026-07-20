@@ -1,0 +1,59 @@
+{
+  "url": "https://www.thecookierookie.com/cucumber-sandwiches-recipe/#utm_source=google&utm_medium=cpc&utm_campaign=20484982729&utm_content=700232866492&utm_term=cucumber%20sandwiches",
+  "title": "Cucumber Sandwiches Recipe",
+  "source_app": "Browser",
+  "source_type": "Web",
+  "image_url": "https://www.thecookierookie.com/wp-content/uploads/2021/04/featured-cucumber-sandwiches-recipe.jpg",
+  "ingredients": [
+    "4 oz. cream cheese (at room temperature)",
+    "¼ cup mayonnaise",
+    "1 tsp garlic powder",
+    "1 tsp dried dill weed",
+    "½ tsp ground black pepper",
+    "pinch of salt",
+    "10-12 slices white bread",
+    "1 English cucumber (about 36-54 slices, sliced)"
+  ],
+  "instructions": [
+    "Stir the cream cheese in a medium bowl until smooth then add the mayo and stir again until smooth.",
+    "Add the garlic powder, dill, pepper and salt and stir together. Add more salt to taste if needed.",
+    "Spread the cream cheese spread on two slices of bread then layer 6-9 slices of cucumber on the bottom half then top with the top slice of bread.",
+    "Repeat the process with the remaining bread, cucumbers, and cream cheese spread.",
+    "Slice off the edges of the sandwiches then slice the sandwiches in half and serve."
+  ],
+  "ingredient_groups": [
+    {
+      "title": "",
+      "items": [
+        "4 oz. cream cheese (at room temperature)",
+        "¼ cup mayonnaise",
+        "1 tsp garlic powder",
+        "1 tsp dried dill weed",
+        "½ tsp ground black pepper",
+        "pinch of salt",
+        "10-12 slices white bread",
+        "1 English cucumber (about 36-54 slices, sliced)"
+      ]
+    }
+  ],
+  "instruction_groups": [
+    {
+      "title": "Instructions",
+      "steps": [
+        "Stir the cream cheese in a medium bowl until smooth then add the mayo and stir again until smooth.",
+        "Add the garlic powder, dill, pepper and salt and stir together. Add more salt to taste if needed.",
+        "Spread the cream cheese spread on two slices of bread then layer 6-9 slices of cucumber on the bottom half then top with the top slice of bread.",
+        "Repeat the process with the remaining bread, cucumbers, and cream cheese spread.",
+        "Slice off the edges of the sandwiches then slice the sandwiches in half and serve."
+      ]
+    }
+  ],
+  "servings": "6, 6 people",
+  "prep_time": "20 minutes",
+  "cook_time": "",
+  "total_time": "20 minutes",
+  "prep_minutes": 20,
+  "cook_minutes": null,
+  "total_minutes": 20,
+  "needs_review": false
+}

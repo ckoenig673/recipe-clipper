@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#4caf50" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Recipe Clipper" />
+  <meta name="cache-bust-version" content="__CACHE_BUST_VERSION__" />
+  <title>Recipe Clipper</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <link rel="stylesheet" href="style.css?v=__CACHE_BUST_VERSION__" />
+</head>
+<body>
+  <section id="auth-screen" class="auth-screen hidden" aria-live="polite">
+    <form id="login-form" class="auth-card">
+      <h1>Recipe Clipper Login</h1>
+      <p>Invite-only beta access.</p>
+      <label for="login-email">Email</label>
+      <input id="login-email" type="email" autocomplete="username" required />
+      <label for="login-password">Password</label>
+      <input id="login-password" type="password" autocomplete="current-password" required />
+      <button type="submit">Log in</button>
+      <p id="login-error" class="login-error hidden" role="alert"></p>
+    </form>
+  </section>
+
+  <div class="app-shell">
+    <aside id="side-panel" class="side-panel" aria-label="Primary">
+      <div class="side-panel-top">
+        <button type="button" class="side-toggle" data-sidebar-toggle="true" aria-label="Toggle navigation">☰</button>
+        <button id="open-add-recipe-rail-button" class="rail-add-recipe" type="button" aria-label="Add Recipe">＋</button>
+        <div class="brand-block">
+          <button id="brand-home-button" class="brand-home-button" type="button" aria-label="Go to dashboard">
+            <span class="brand-title">🍳 Recipe Clipper</span>
+          </button>
+        </div>
+      </div>
+
+      <button id="open-add-recipe-button" class="add-recipe-cta side-add-recipe" type="button">+ Add Recipe</button>
+      <nav class="side-nav" aria-label="Cookbook navigation">
+        <div class="side-nav-section">
+          <div class="side-nav-section-row">
+            <button id="nav-cookbooks-button" class="side-nav-item side-nav-section-link" type="button">
+              <span class="side-nav-icon">📚</span>
+              <span class="side-nav-label">Cookbooks</span>
+            </button>
+
+            <button
+              id="cookbooks-section-toggle"
+              class="side-nav-tree-toggle"
+              type="button"
+              aria-expanded="true"
+            >
+              <span class="side-nav-chevron">⌄</span>
+            </button>
+          </div>
+
+          <div id="side-cookbook-tree" class="side-cookbook-tree">
+            <div class="side-cookbook-tree-frame">
+              <div id="side-cookbook-list" class="side-cookbook-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <button id="nav-meal-plan-button" class="side-nav-item side-nav-item-secondary" type="button">
+          <span class="side-nav-icon">🗓</span>
+          <span class="side-nav-label">Meal Plan</span>
+        </button>
+
+        <button id="nav-groceries-button" class="side-nav-item side-nav-item-secondary" type="button">
+          <span class="side-nav-icon">🛒</span>
+          <span class="side-nav-label">Groceries</span>
+        </button>
+
+        <button id="nav-admin-users-button" class="side-nav-item side-nav-item-secondary hidden" type="button">
+          <span class="side-nav-icon">👥</span>
+          <span class="side-nav-label">Admin Users</span>
+        </button>
+      </nav>
+
+      <div class="side-utility">
+        <button class="side-nav-item side-nav-item-utility" type="button">
+          <span class="side-nav-icon">🧩</span>
+          <span class="side-nav-label">Chrome extension</span>
+        </button>
+
+        <button id="logout-button" class="side-nav-item side-nav-item-utility" type="button">
+          <span class="side-nav-icon">🔒</span>
+          <span class="side-nav-label">Log out</span>
+        </button>
+
+        <button id="nav-settings-button" class="side-nav-item side-nav-item-utility" type="button">
+          <span class="side-nav-icon">⚙</span>
+          <span class="side-nav-label">Settings</span>
+        </button>
+        <p id="app-build-version" class="side-app-version" aria-label="App version"></p>
+      </div>
+    </aside>
+
+    <main class="container">
+      <section id="admin-users-panel" class="admin-users-panel hidden" aria-live="polite">
+        <div class="admin-users-header">
+          <h1>Admin Users</h1>
+          <p>Pre-beta access is invite-only. Create and manage tester accounts here.</p>
+        </div>
+        <p id="admin-users-access-required" class="admin-users-empty hidden">Admin access required</p>
+        <div id="admin-users-status" class="status-message hidden" role="status" aria-live="polite"></div>
+        <div class="admin-users-top-grid">
+          <form id="admin-add-user-form" class="admin-card admin-add-user-form">
+            <h2>Create user</h2>
+            <label for="admin-user-email">Email</label>
+            <input id="admin-user-email" type="email" required />
+            <label for="admin-user-display-name">Display name (optional)</label>
+            <input id="admin-user-display-name" type="text" />
+            <label for="admin-user-password">Temp password</label>
+            <input id="admin-user-password" type="password" required />
+            <label class="admin-inline-checkbox" for="admin-user-is-admin">
+              <input id="admin-user-is-admin" type="checkbox" />
+              <span>Make this user an admin</span>
+            </label>
+            <button type="submit" class="admin-button admin-button-primary">Create user</button>
+          </form>
+          <form id="admin-security-settings-form" class="admin-card admin-security-form">
+            <h2>Security settings</h2>
+            <p>Configure global account lockout rules after failed sign-ins.</p>
+            <label class="admin-inline-checkbox" for="auth-lockout-enabled">
+              <input id="auth-lockout-enabled" type="checkbox" checked />
+              <span>Enable account lockout</span>
+            </label>
+            <label for="auth-max-failed-attempts">Max failed attempts</label>
+            <input id="auth-max-failed-attempts" type="number" min="1" step="1" value="5" required />
+            <label for="auth-lockout-minutes">Lockout duration (minutes)</label>
+            <input id="auth-lockout-minutes" type="number" min="0" step="1" value="15" required />
+            <p class="field-help"><strong>0 = manual unlock</strong> (locked until an admin unlocks). Values above 0 unlock automatically after that many minutes.</p>
+            <button type="submit" class="admin-button admin-button-primary">Save security settings</button>
+          </form>
+        </div>
+        <section class="admin-card admin-users-table-card">
+          <div class="admin-users-table-header">
+            <h2>Users</h2>
+            <p>Manage roles, lock state, and account access.</p>
+          </div>
+          <div id="admin-users-table-wrap" class="admin-users-table-wrap"></div>
+        </section>
+      </section>
+      <section id="settings-panel" class="settings-panel hidden" aria-live="polite">
+        <div class="settings-header">
+          <h1>Settings</h1>
+          <p>Manage your personal account and import settings.</p>
+        </div>
+        <div id="settings-status" class="status-message hidden" role="status"></div>
+        <div class="settings-grid">
+          <section class="settings-card">
+            <h2>Account Settings</h2>
+            <p>Signed in as your Recipe Clipper account.</p>
+          </section>
+          <section class="settings-card">
+            <h2>Import Settings</h2>
+            <p>These settings apply only to your account.</p>
+            <p id="facebook-cookie-state">No Facebook cookie saved</p>
+            <label for="facebook-cookie-input">Facebook cookie</label>
+            <textarea id="facebook-cookie-input" rows="5" placeholder="Paste cookie value"></textarea>
+            <div class="cookbook-view-actions">
+              <button id="facebook-cookie-save-button" class="admin-button admin-button-primary" type="button">Save</button>
+              <button id="facebook-cookie-clear-button" class="secondary-button" type="button">Delete/Clear</button>
+              <button id="facebook-cookie-test-button" class="secondary-button" type="button">Test Facebook access</button>
+            </div>
+            <p id="facebook-cookie-test-state" class="field-help"></p>
+          </section>
+          <section class="settings-card">
+            <h2>Import Services Status</h2>
+            <p id="import-services-warning" class="field-help hidden"></p>
+            <div id="import-services-status-list" class="field-help">Loading service status...</div>
+          </section>
+        </div>
+      </section>
+
+      <section class="recipes-section">
+        <section id="dashboard-main-panel" class="dashboard-main-panel">
+          <header class="cookbooks-header">
+            <button type="button" class="side-toggle mobile-toggle" data-sidebar-toggle="true" aria-label="Toggle navigation">☰</button>
+            <h1 class="cookbooks-title">Cookbooks</h1>
+            <div class="cookbooks-search">
+              <input type="text" id="search-input" placeholder="Search recipes..." />
+            </div>
+          </header>
+
+          <div id="status-message" class="status-message hidden" role="status" aria-live="polite"></div>
+          <section id="share-import-panel" class="share-import-panel hidden" aria-live="polite">
+            <p id="share-import-label" class="share-import-label">Saving recipe…</p>
+            <h2 id="share-import-title" class="share-import-title">Importing shared recipe</h2>
+            <p id="share-import-details" class="share-import-details">Please wait while we save this link.</p>
+            <div id="share-import-preview" class="share-import-preview hidden">
+              <img id="share-import-preview-image" class="share-import-preview-image hidden" alt="Shared post preview" loading="lazy" />
+              <p id="share-import-preview-caption" class="share-import-preview-caption hidden"></p>
+            </div>
+            <div id="share-import-actions" class="share-import-actions hidden">
+              <button id="share-import-open-button" class="secondary-button" type="button">Open recipe</button>
+              <button id="share-import-manual-button" class="secondary-button" type="button">Review & edit</button>
+            </div>
+          </section>
+
+          <section id="cookbooks-panel" class="cookbooks-panel" aria-live="polite">
+            <div id="cookbook-grid" class="cookbook-grid"></div>
+          </section>
+
+          <section id="dashboard-search-panel" class="cookbooks-panel hidden" aria-live="polite">
+            <div id="dashboard-search-empty-state" class="empty-state hidden">No recipes match your current filters.</div>
+            <div id="dashboard-search-results" class="recipes-list"></div>
+          </section>
+        </section>
+
+        <section id="cookbook-view" class="cookbook-view hidden" aria-live="polite">
+          <div id="recipes-list-header" class="section-header recipe-list-header">
+            <div class="cookbook-view-header-row">
+              <div class="cookbook-view-title-block">
+                <div class="cookbook-view-title-row">
+                  <button id="back-to-cookbooks-button" class="secondary-button" type="button">← Back to cookbooks</button>
+                  <h3 id="selected-cookbook-title">Cookbook</h3>
+                  <button
+                    id="cookbook-menu-button"
+                    class="cookbook-menu-trigger"
+                    type="button"
+                    aria-label="Cookbook actions"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                  >
+                    ...
+                  </button>
+                </div>
+                <p id="selected-cookbook-count" class="cookbook-view-count">0 recipes</p>
+              </div>
+              <div class="cookbook-view-actions">
+                <button id="shopping-selection-toggle" class="secondary-button" type="button">Select recipes</button>
+                <button id="select-all-recipes-button" class="secondary-button hidden" type="button">Select All</button>
+                <span id="shopping-selection-count" class="shopping-selection-count hidden" aria-live="polite">0 recipes selected</span>
+                <button id="generate-shopping-list-button" class="secondary-button hidden" type="button">Add to grocery list</button>
+                <button id="move-selected-recipes-button" class="secondary-button hidden" type="button">Move to cookbook</button>
+                <button id="delete-selected-recipes-button" class="secondary-button hidden" type="button">Delete recipes</button>
+                <input type="text" id="cookbook-search-input" placeholder="Search recipes..." aria-label="Search recipes" />
+              </div>
+            </div>
+
+            <div id="cookbook-actions-menu" class="cookbook-actions-menu hidden" role="menu" aria-label="Cookbook actions">
+              <button id="rename-cookbook-button" type="button" role="menuitem" class="cookbook-menu-item">Rename cookbook</button>
+              <button id="delete-cookbook-button" type="button" role="menuitem" class="cookbook-menu-item cookbook-menu-item-danger">Delete cookbook</button>
+            </div>
+          </div>
+
+          <section id="shopping-list-view" class="panel shopping-list-view hidden" aria-live="polite">
+            <div class="shopping-list-header">
+              <div>
+                <h3>Grocery List</h3>
+                <p id="shopping-list-count">0 items</p>
+              </div>
+              <button id="close-shopping-list-button" class="secondary-button" type="button">Back to recipes</button>
+            </div>
+            <div id="shopping-list-status" class="status-message hidden" role="status"></div>
+            <div id="grocery-source-cards" class="grocery-source-cards"></div>
+            <ul id="shopping-list-items" class="shopping-list-items"></ul>
+            <div id="checked-grocery-section" class="checked-grocery-section hidden">
+              <div class="shopping-list-header">
+                <div>
+                  <h3>Checked Items</h3>
+                  <p id="checked-grocery-count">0 items</p>
+                </div>
+                <button id="clear-checked-grocery-button" class="secondary-button" type="button">Clear checked</button>
+              </div>
+              <ul id="checked-grocery-items" class="shopping-list-items checked-grocery-items"></ul>
+            </div>
+            <button id="clear-grocery-list-button" class="secondary-button grocery-clear-all" type="button">Clear grocery list</button>
+          </section>
+
+          <section id="recipe-detail-view" class="panel recipe-detail hidden" aria-live="polite">
+            <div class="detail-content">
+              <article class="detail-header-card">
+                <div class="detail-hero">
+                  <div id="detail-image-wrap" class="detail-image-wrap">
+                    <img id="detail-image" class="detail-image" src="" alt="Recipe image" loading="lazy" />
+                    <div id="detail-image-placeholder" class="detail-image-placeholder">
+                      <span>No image</span>
+                    </div>
+                  </div>
+
+                  <div class="detail-hero-content">
+                    <div class="detail-hero-top">
+                      <button id="close-detail-button" class="secondary-button detail-back-button" type="button">Back to recipes</button>
+                      <div class="detail-manage-actions">
+                        <button id="detail-edit-button" class="icon-action-button" type="button" aria-label="Edit recipe">✎</button>
+                        <button
+                          id="detail-menu-button"
+                          class="icon-action-button"
+                          type="button"
+                          aria-label="Recipe actions"
+                          aria-haspopup="menu"
+                          aria-expanded="false"
+                        >
+                          ...
+                        </button>
+                        <div id="detail-actions-menu" class="cookbook-actions-menu hidden detail-actions-menu" role="menu" aria-label="Recipe actions">
+                          <button id="detail-menu-edit-button" type="button" role="menuitem" class="cookbook-menu-item">Edit</button>
+                          <button id="detail-menu-delete-button" type="button" role="menuitem" class="cookbook-menu-item cookbook-menu-item-danger">Delete</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <h3 id="detail-title" class="detail-title"></h3>
+                    <p id="detail-review-status" class="detail-review-status hidden"></p>
+                    <p id="detail-ai-cleanup-status" class="detail-review-status hidden"></p>
+
+                    <div id="detail-meta-row" class="detail-meta-row">
+                      <span id="detail-prep-time" class="detail-meta-chip hidden"></span>
+                      <span id="detail-cook-time" class="detail-meta-chip hidden"></span>
+                    </div>
+
+                    <div class="detail-top-actions">
+                      <a id="open-original-button" class="secondary-pill-action" href="#" target="_blank" rel="noopener noreferrer">Open source recipe</a>
+                      <button id="detail-share-button" class="secondary-pill-action" type="button">Share</button>
+                      <button id="detail-ai-cleanup-button" class="secondary-pill-action" type="button">AI Cleanup</button>
+                      <button id="copy-ingredients-button" class="secondary-pill-action" type="button">Copy ingredients</button>
+                      <button id="detail-groceries-button" class="secondary-pill-action" type="button">Groceries</button>
+                      <button id="detail-meal-plan-button" class="secondary-pill-action" type="button">Meal Plan</button>
+                    </div>
+                    <div id="detail-source-links" class="detail-source-links hidden">
+                      <a id="detail-source-recipe-link" href="#" target="_blank" rel="noopener noreferrer" class="hidden">Source recipe</a>
+                      <a id="detail-imported-from-link" href="#" target="_blank" rel="noopener noreferrer" class="hidden">Imported from</a>
+                    </div>
+                  </div>
+                </div>
+                <div class="detail-status-row">
+                  <label for="detail-cooked-toggle" class="detail-cooked-label">
+                    <span>Mark as Cooked</span>
+                    <input id="detail-cooked-toggle" type="checkbox" />
+                  </label>
+
+                  <div class="detail-rating-wrap">
+                    <span class="detail-rating-label">Rating</span>
+                    <div id="detail-rating-stars" class="detail-rating-stars" role="radiogroup" aria-label="Recipe rating">
+                      <button type="button" class="detail-star-button" data-rating-value="1" aria-label="Rate 1 star">☆</button>
+                      <button type="button" class="detail-star-button" data-rating-value="2" aria-label="Rate 2 stars">☆</button>
+                      <button type="button" class="detail-star-button" data-rating-value="3" aria-label="Rate 3 stars">☆</button>
+                      <button type="button" class="detail-star-button" data-rating-value="4" aria-label="Rate 4 stars">☆</button>
+                      <button type="button" class="detail-star-button" data-rating-value="5" aria-label="Rate 5 stars">☆</button>
+                    </div>
+                  </div>
+                </div>
+                <textarea id="detail-note-input" class="detail-note-input" placeholder="Add note" aria-label="Recipe note" rows="2"></textarea>
+              </article>
+
+              <div class="detail-main-grid">
+                <section class="detail-column detail-column-left">
+                  <section class="detail-section detail-section-cookbooks">
+                    <div class="detail-section-header">
+                      <h4 class="detail-section-title">Cookbooks</h4>
+                      <button id="detail-cookbook-add-button" class="detail-add-link" type="button">Add</button>
+                    </div>
+                    <div id="detail-cookbook-membership" class="detail-cookbook-membership"></div>
+                    <div id="detail-cookbook-popover" class="detail-cookbook-popover hidden" role="dialog" aria-label="Manage cookbook membership">
+                      <button id="detail-new-cookbook-button" class="secondary-button detail-popover-new" type="button">New cookbook</button>
+                      <div id="detail-cookbook-options" class="detail-cookbook-options"></div>
+                      <div class="detail-cookbook-popover-footer">
+                        <button id="detail-cookbook-save-button" class="secondary-button detail-popover-save" type="button">Save</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="detail-section detail-section-ingredients">
+                  <h4 class="detail-section-title">Ingredients</h4>
+                  <div class="ingredients-utility-row">
+                    <div class="ingredients-servings-group">
+                      <div class="servings-stepper" role="group" aria-label="Adjust servings">
+                        <button id="detail-servings-decrease" class="servings-stepper-button" type="button" aria-label="Decrease servings">−</button>
+                        <span id="detail-servings-value" class="servings-stepper-value" aria-live="polite">1</span>
+                        <button id="detail-servings-increase" class="servings-stepper-button" type="button" aria-label="Increase servings">+</button>
+                      </div>
+                      <span class="ingredients-utility-label">servings</span>
+                    </div>
+                    <div class="ingredients-convert-wrap">
+                      <button
+                        id="detail-convert-button"
+                        class="ingredients-convert-button"
+                        type="button"
+                        aria-haspopup="menu"
+                        aria-expanded="false"
+                      >
+                        <span class="ingredients-convert-value" id="detail-convert-value">Original</span>
+                        <span class="ingredients-convert-text">▾</span>
+                      </button>
+                      <div id="detail-convert-menu" class="ingredients-convert-menu hidden" role="menu" aria-label="Ingredient unit conversion mode">
+                        <button type="button" role="menuitemradio" class="ingredients-convert-option is-selected" data-convert-mode="original" aria-checked="true">Original</button>
+                        <button type="button" role="menuitemradio" class="ingredients-convert-option" data-convert-mode="metric" aria-checked="false">Metric (grams, litres)</button>
+                        <button type="button" role="menuitemradio" class="ingredients-convert-option" data-convert-mode="imperial" aria-checked="false">Imperial (pounds, ounces)</button>
+                      </div>
+                    </div>
+                  </div>
+                  <ul id="detail-ingredients" class="detail-ingredients-list"></ul>
+                </section>
+                </section>
+
+                <section class="detail-column detail-column-right">
+                  <section id="detail-recipe-notes-section" class="detail-section detail-section-notes hidden">
+                  <h4 class="detail-section-title">Notes</h4>
+                  <div id="detail-recipe-notes" class="detail-recipe-notes"></div>
+                </section>
+                  <section class="detail-section detail-section-instructions">
+                  <h4 class="detail-section-title">Instructions</h4>
+                  <ol id="detail-instructions" class="detail-instructions-list"></ol>
+                </section>
+                </section>
+              </div>
+
+            </div>
+          </section>
+
+          <div id="empty-state" class="empty-state hidden">No recipes yet. Add one with the Add Recipe button.</div>
+          <div id="recipes" class="recipes-list"></div>
+        </section>
+
+        <section id="meal-plan-view" class="panel hidden" aria-live="polite">
+          <div class="shopping-list-header">
+            <div>
+              <h3>Meal Plan</h3>
+              <p id="meal-plan-week-range"></p>
+            </div>
+            <div class="cookbook-view-actions">
+              <button id="meal-plan-prev-week" class="secondary-button" type="button" aria-label="Previous week">‹</button>
+              <button id="meal-plan-this-week" class="secondary-button" type="button">This Week</button>
+              <button id="meal-plan-next-week" class="secondary-button" type="button" aria-label="Next week">›</button>
+              <button id="meal-plan-grocery-button" class="secondary-button" type="button">Add to groceries</button>
+            </div>
+          </div>
+          <div id="meal-plan-status" class="status-message hidden" role="status"></div>
+          <div id="meal-plan-days" class="grocery-source-cards"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <section id="meal-plan-add-modal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card panel" role="dialog" aria-modal="true" aria-label="Add to meal plan">
+      <div class="modal-header">
+        <h3>Add to Meal Plan</h3>
+        <button id="close-meal-plan-add-modal" class="modal-close-button" type="button" aria-label="Close">✕</button>
+      </div>
+      <p id="meal-plan-add-date-label"></p>
+      <p id="meal-plan-add-helper" class="add-recipe-helper-text hidden">Add a recipe first.</p>
+      <label for="meal-plan-date-input">Plan Date</label>
+      <input type="date" id="meal-plan-date-input" />
+      <label for="meal-plan-slot-select">Meal Slot</label>
+      <select id="meal-plan-slot-select">
+        <option value="breakfast">Breakfast</option>
+        <option value="lunch">Lunch</option>
+        <option value="dinner" selected>Dinner</option>
+        <option value="other">Other</option>
+      </select>
+      <label for="meal-plan-recipe-select">Recipe</label>
+      <select id="meal-plan-recipe-select"></select>
+      <div class="modal-actions">
+        <button id="cancel-meal-plan-add" class="secondary-button" type="button">Cancel</button>
+        <button id="confirm-meal-plan-add" type="button">Add to Plan</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="share-modal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card panel" role="dialog" aria-modal="true" aria-label="Share recipe">
+      <div class="modal-header">
+        <h3>Share recipe</h3>
+        <button id="close-share-modal-button" class="modal-close-button" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="share-modal-actions">
+        <button id="share-text-button" class="secondary-button" type="button">Share text</button>
+        <button id="copy-text-button" class="secondary-button" type="button">Copy text</button>
+        <button id="print-recipe-button" class="secondary-button" type="button">Print / Save as PDF</button>
+      </div>
+      <p class="share-modal-help">Use your browser print dialog to save as PDF.</p>
+    </div>
+  </section>
+
+
+  <section id="add-recipe-modal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card panel" role="dialog" aria-modal="true" aria-labelledby="add-recipe-modal-title">
+      <div class="modal-header">
+        <h3 id="add-recipe-modal-title">Add recipe or Import recipe</h3>
+        <button id="close-add-recipe-button" class="modal-close-button" type="button" aria-label="Close add recipe form">✕</button>
+      </div>
+      <div class="modal-body">
+      <section id="add-recipe-panel">
+        <form id="recipe-form" class="recipe-form">
+          <input type="hidden" id="edit-id" />
+          <input type="hidden" id="title" />
+          <input type="hidden" id="source_app" />
+          <input type="hidden" id="source_type" />
+          <input type="hidden" id="image_url" />
+          <input type="hidden" id="tags" />
+          <section id="import-browser-panel" class="import-browser-panel hidden" aria-label="Import from URL">
+            <div class="import-mode-header">
+              <button type="button" id="import-mode-back-button" class="import-mode-back-button" aria-label="Back to import options">←</button>
+              <span>Import from URL</span>
+            </div>
+            <label for="url" class="import-url-label">Paste recipe link</label>
+            <div id="import-url-row" class="import-url-row">
+              <input type="url" id="url" placeholder="Paste recipe URL" />
+              <button type="button" id="submit-button" class="url-submit-button" aria-label="Import recipe URL">→</button>
+            </div>
+          </section>
+          <div id="import-mode-separator" class="import-mode-separator hidden" aria-hidden="true"></div>
+          <div id="social-resolution-debug" class="social-resolution-debug hidden" aria-live="polite">
+            <p class="social-resolution-debug-title">Social resolver debug</p>
+            <p><strong>Social URL:</strong> <span id="social-debug-original-url"></span></p>
+            <p><strong>Canonical Reel URL:</strong> <span id="social-debug-canonical-url"></span></p>
+            <p><strong>Post ID:</strong> <span id="social-debug-post-id"></span></p>
+            <p><strong>Resolver Method:</strong> <span id="social-debug-method"></span></p>
+            <p><strong>Final Resolved URL:</strong> <span id="social-debug-resolved-url"></span></p>
+          </div>
+          <div id="add-recipe-status" class="status-message error hidden" role="status" aria-live="polite"></div>
+          <div id="ocr-warning-banner" class="ocr-warning-banner hidden" role="status" aria-live="polite"></div>
+          <section id="edit-fields-panel" class="edit-fields-panel hidden">
+            <h4 class="edit-fields-title">Recipe details</h4>
+            <label class="edit-field">
+              <span>Title</span>
+              <input type="text" id="edit-title-input" placeholder="Recipe title" />
+            </label>
+            <div class="edit-time-grid">
+              <label class="edit-field">
+                <span>Servings</span>
+                <input type="text" id="edit-servings-input" placeholder="e.g. 4" />
+              </label>
+              <label class="edit-field">
+                <span>Prep time</span>
+                <input type="text" id="edit-prep-time-input" placeholder="e.g. 15 min" />
+              </label>
+              <label class="edit-field">
+                <span>Cook time</span>
+                <input type="text" id="edit-cook-time-input" placeholder="e.g. 35 min" />
+              </label>
+            </div>
+            <div id="edit-image-panel" class="edit-image-panel hidden">
+              <div class="edit-image-preview-wrap">
+                <img id="edit-image-preview" class="edit-image-preview hidden" src="" alt="Recipe image preview" />
+                <span id="edit-image-placeholder" class="edit-image-placeholder">No image</span>
+              </div>
+              <div class="edit-image-actions">
+                <label for="edit-image-input" class="secondary-button edit-image-button">Choose image</label>
+                <button type="button" id="clear-edit-image-button" class="secondary-button">Remove image</button>
+                <input type="file" id="edit-image-input" accept="image/*" class="hidden" />
+              </div>
+            </div>
+            <label class="edit-field">
+              <span>Notes</span>
+              <textarea id="notes" rows="5" placeholder="Description or recipe notes"></textarea>
+            </label>
+          </section>
+          <button
+            type="button"
+            id="run-ai-cleanup-button"
+            class="secondary-button hidden"
+          >
+            Run AI Cleanup
+          </button>
+          <button
+            type="submit"
+            id="add-recipe-submit-button"
+            class="primary-submit-button hidden"
+            form="recipe-form"
+            disabled
+          >
+            Add Recipe
+          </button>
+          <section id="parsed-results" class="hidden" aria-live="polite">
+            <h3 id="parsed-results-title">Parsed Recipe</h3>
+            <p id="parsed-servings-section" class="hidden"><strong>Servings:</strong> <span id="parsed-servings"></span></p>
+            <div id="parsed-ingredients-section" class="hidden">
+              <div class="parsed-list-header">
+                <strong>Ingredients:</strong>
+                <button type="button" id="ingredients-reorder-button" class="secondary-button compact-button">Re-order</button>
+              </div>
+              <div id="parsed-ingredients"></div>
+              <div class="parsed-add-actions">
+                <button type="button" id="add-ingredient-button" class="text-button parsed-add-button">+ Add ingredient</button>
+                <button type="button" id="add-ingredient-section-button" class="text-button parsed-add-button hidden">+ Add ingredient section</button>
+              </div>
+            </div>
+            <div id="parsed-instructions-section" class="hidden">
+              <div class="parsed-list-header">
+                <strong>Instructions:</strong>
+                <button type="button" id="instructions-reorder-button" class="secondary-button compact-button">Re-order</button>
+              </div>
+              <div id="parsed-instructions"></div>
+              <div class="parsed-add-actions">
+                <button type="button" id="add-instruction-button" class="text-button parsed-add-button">+ Add instruction</button>
+                <button type="button" id="add-instruction-section-button" class="text-button parsed-add-button hidden">+ Add instruction section</button>
+              </div>
+            </div>
+          </section>
+          <div id="import-divider" class="import-divider hidden" role="separator" aria-label="Other import options">
+            <span>or</span>
+          </div>
+          <div id="import-option-grid" class="import-option-grid">
+            <button type="button" id="browser-option-button" class="import-option-card">
+              <span class="import-option-icon" aria-hidden="true">🌐</span>
+              <span class="import-option-label">Browser</span>
+              <span class="import-option-subtext">Import from URL</span>
+            </button>
+            <button type="button" id="paste-text-option-button" class="import-option-card">
+              <span class="import-option-icon" aria-hidden="true">📝</span>
+              <span class="import-option-label">Paste Text</span>
+              <span class="import-option-subtext">Paste a full recipe</span>
+            </button>
+            <button type="button" id="upload-photo-button" data-testid="camera-option-button" class="import-option-card">
+              <span class="import-option-icon" aria-hidden="true">📷</span>
+              <span class="import-option-label">Camera</span>
+              <span class="import-option-subtext">Import from image</span>
+            </button>
+            <button type="button" id="write-from-scratch-option-button" class="import-option-card">
+              <span class="import-option-icon" aria-hidden="true">✏️</span>
+              <span class="import-option-label">Write from scratch</span>
+              <span class="import-option-subtext">Start with blank fields</span>
+            </button>
+            <input type="file" id="image-upload-input" data-testid="image-upload-input" accept="image/*" class="hidden" />
+          </div>
+          <section id="paste-text-panel" class="paste-text-panel hidden">
+            <label for="paste-recipe-text">Paste full recipe</label>
+            <textarea id="paste-recipe-text" rows="9" placeholder="Paste full recipe"></textarea>
+            <p class="add-recipe-helper-text">Best results when each ingredient and step is on a new line</p>
+            <button type="button" id="paste-text-import-button" class="primary-submit-button">Import pasted recipe</button>
+          </section>
+          <button
+            type="submit"
+            id="bottom-save-recipe-button"
+            class="primary-submit-button hidden"
+            form="recipe-form"
+            disabled
+          >
+            Save Recipe
+          </button>
+          <button type="button" id="cancel-edit-button" class="secondary-button hidden">Cancel Edit</button>
+        </form>
+      </section>
+      </div>
+    </div>
+  </section>
+
+  <section id="grocery-preview-modal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card panel" role="dialog" aria-modal="true" aria-labelledby="grocery-preview-title">
+      <div class="modal-header">
+        <h3 id="grocery-preview-title">Add to grocery list</h3>
+        <button id="close-grocery-preview-button" class="modal-close-button" type="button" aria-label="Close grocery preview">✕</button>
+      </div>
+      <p class="add-recipe-helper-text">Choose the ingredients to add.</p>
+      <div id="grocery-preview-status" class="status-message hidden" role="status"></div>
+      <div id="grocery-preview-items" class="grocery-preview-items"></div>
+      <button id="confirm-grocery-preview-button" class="primary-submit-button" type="button">Add items</button>
+    </div>
+  </section>
+
+  <section id="ai-cleanup-review-modal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card panel ai-cleanup-review-card" role="dialog" aria-modal="true" aria-labelledby="ai-cleanup-review-title">
+      <div class="modal-header">
+        <h3 id="ai-cleanup-review-title">Review AI Cleanup</h3>
+        <button id="close-ai-cleanup-review-button" class="modal-close-button" type="button" aria-label="Close AI cleanup review">✕</button>
+      </div>
+      <p class="add-recipe-helper-text">Compare the current recipe with the proposed cleanup before applying anything.</p>
+      <div id="ai-cleanup-review-status" class="status-message hidden" role="status"></div>
+      <div id="ai-cleanup-review-changes" class="ai-cleanup-review-changes"></div>
+      <div class="modal-actions">
+        <button id="cancel-ai-cleanup-review-button" class="secondary-button" type="button">Cancel</button>
+        <button id="accept-ai-cleanup-review-button" class="primary-submit-button" type="button">Apply changes</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="mobile-bottom-nav" class="mobile-bottom-nav" aria-label="Mobile navigation">
+    <button type="button" data-nav="recipes"><span class="mobile-nav-icon">🍳</span><span class="mobile-nav-label">Recipes</span></button>
+    <button type="button" data-nav="meal-plan"><span class="mobile-nav-icon">📅</span><span class="mobile-nav-label">Plan</span></button>
+    <button type="button" data-nav="groceries"><span class="mobile-nav-icon">🛒</span><span class="mobile-nav-label">Groceries</span></button>
+    <button type="button" id="mobile-add-button" aria-label="Add recipe"><span class="mobile-nav-icon">＋</span><span class="mobile-nav-label">Add</span></button>
+  </div>
+
+  <script src="app.js?v=__CACHE_BUST_VERSION__"></script>
+</body>
+</html>

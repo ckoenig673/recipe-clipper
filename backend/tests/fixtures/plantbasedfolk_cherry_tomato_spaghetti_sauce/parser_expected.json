@@ -1,0 +1,215 @@
+{
+  "title": "Cherry Tomato Spaghetti Sauce",
+  "ingredients": [
+    "2 tbsps Olive oil",
+    "1 small-medium Onion (finely diced)",
+    "3 cloves Garlic (crushed)",
+    "750 g Cherry tomatoes (halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.)",
+    "1 tsp Dried oregano flakes",
+    "¼ tsp Chili pepper flakes (or to taste)",
+    "1½ tsps Salt (or to taste)",
+    "¼ tsp Cracked black pepper",
+    "1 cup Water",
+    "1 handful Fresh basil leaves"
+  ],
+  "instructions": [
+    "In a skillet over medium heat, heat some olive oil. Add the finely diced onion and garlic, and sauté until they are translucent, about 5 minutes.",
+    "Next, add the sliced cherry tomatoes along with all the herbs and spices, except for the basil. Stir well and let the tomatoes soften for 10 minutes, occasionally mashing and stirring the tomatoes with the back of your spoon as they soften.After that, stir in the water and allow the sauce to simmer for another 10 to 15 minutes, stirring and mashing occasionally. The goal is to break down the tomatoes as much as possible to make blending easier in the next step.",
+    "Once the sauce has thickened, turn off the heat. Stir in the torn basil leaves and let the sauce sit for 5 minutes. Then, using an immersion blender, blend the sauce until smooth. Serve it warm over spaghetti or your favorite pasta."
+  ],
+  "servings": "3, 3 cups",
+  "prep_time": "5 minutes",
+  "cook_time": "30 minutes",
+  "total_time": "35 minutes",
+  "prep_minutes": 5,
+  "cook_minutes": 30,
+  "total_minutes": 35,
+  "ingredient_groups": [
+    {
+      "title": "",
+      "items": [
+        "2 tbsps Olive oil",
+        "1 small-medium Onion (finely diced)",
+        "3 cloves Garlic (crushed)",
+        "750 g Cherry tomatoes (halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.)",
+        "1 tsp Dried oregano flakes",
+        "¼ tsp Chili pepper flakes (or to taste)",
+        "1½ tsps Salt (or to taste)",
+        "¼ tsp Cracked black pepper",
+        "1 cup Water",
+        "1 handful Fresh basil leaves"
+      ]
+    }
+  ],
+  "instruction_groups": [
+    {
+      "title": "Instructions",
+      "steps": [
+        "In a skillet over medium heat, heat some olive oil. Add the finely diced onion and garlic, and sauté until they are translucent, about 5 minutes.",
+        "Next, add the sliced cherry tomatoes along with all the herbs and spices, except for the basil. Stir well and let the tomatoes soften for 10 minutes, occasionally mashing and stirring the tomatoes with the back of your spoon as they soften.After that, stir in the water and allow the sauce to simmer for another 10 to 15 minutes, stirring and mashing occasionally. The goal is to break down the tomatoes as much as possible to make blending easier in the next step.",
+        "Once the sauce has thickened, turn off the heat. Stir in the torn basil leaves and let the sauce sit for 5 minutes. Then, using an immersion blender, blend the sauce until smooth. Serve it warm over spaghetti or your favorite pasta."
+      ]
+    }
+  ],
+  "image_url": "https://plantbasedfolk.com/wp-content/uploads/2024/12/cherry-tomato-spaghetti-sauce.jpg",
+  "_selected_source": "jsonld",
+  "_selected_reason": "jsonld-default",
+  "_parser_counts": {
+    "jsonld": {
+      "ingredients": 10,
+      "instructions": 3,
+      "ingredient_groups": 1,
+      "instruction_groups": 1
+    },
+    "dom": {
+      "ingredients": 10,
+      "instructions": 0,
+      "ingredient_groups": 1,
+      "instruction_groups": 0
+    },
+    "wprm": {
+      "ingredients": 10,
+      "instructions": 0,
+      "ingredient_groups": 1,
+      "instruction_groups": 0
+    }
+  },
+  "_raw_sources": {
+    "jsonld": {
+      "title": "Cherry Tomato Spaghetti Sauce",
+      "ingredients": [
+        "2 tbsps Olive oil",
+        "1 small-medium Onion (finely diced)",
+        "3 cloves Garlic (crushed)",
+        "750 g Cherry tomatoes (halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.)",
+        "1 tsp Dried oregano flakes",
+        "¼ tsp Chili pepper flakes (or to taste)",
+        "1½ tsps Salt (or to taste)",
+        "¼ tsp Cracked black pepper",
+        "1 cup Water",
+        "1 handful Fresh basil leaves"
+      ],
+      "instructions": [
+        "In a skillet over medium heat, heat some olive oil. Add the finely diced onion and garlic, and sauté until they are translucent, about 5 minutes.",
+        "Next, add the sliced cherry tomatoes along with all the herbs and spices, except for the basil. Stir well and let the tomatoes soften for 10 minutes, occasionally mashing and stirring the tomatoes with the back of your spoon as they soften.After that, stir in the water and allow the sauce to simmer for another 10 to 15 minutes, stirring and mashing occasionally. The goal is to break down the tomatoes as much as possible to make blending easier in the next step.",
+        "Once the sauce has thickened, turn off the heat. Stir in the torn basil leaves and let the sauce sit for 5 minutes. Then, using an immersion blender, blend the sauce until smooth. Serve it warm over spaghetti or your favorite pasta."
+      ],
+      "servings": "3, 3 cups",
+      "prep_time": "5 minutes",
+      "cook_time": "30 minutes",
+      "total_time": "35 minutes",
+      "prep_minutes": 5,
+      "cook_minutes": 30,
+      "total_minutes": 35,
+      "ingredient_groups": [
+        {
+          "title": "",
+          "items": [
+            "2 tbsps Olive oil",
+            "1 small-medium Onion (finely diced)",
+            "3 cloves Garlic (crushed)",
+            "750 g Cherry tomatoes (halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.)",
+            "1 tsp Dried oregano flakes",
+            "¼ tsp Chili pepper flakes (or to taste)",
+            "1½ tsps Salt (or to taste)",
+            "¼ tsp Cracked black pepper",
+            "1 cup Water",
+            "1 handful Fresh basil leaves"
+          ]
+        }
+      ],
+      "instruction_groups": [
+        {
+          "title": "",
+          "steps": [
+            "In a skillet over medium heat, heat some olive oil. Add the finely diced onion and garlic, and sauté until they are translucent, about 5 minutes.",
+            "Next, add the sliced cherry tomatoes along with all the herbs and spices, except for the basil. Stir well and let the tomatoes soften for 10 minutes, occasionally mashing and stirring the tomatoes with the back of your spoon as they soften.After that, stir in the water and allow the sauce to simmer for another 10 to 15 minutes, stirring and mashing occasionally. The goal is to break down the tomatoes as much as possible to make blending easier in the next step.",
+            "Once the sauce has thickened, turn off the heat. Stir in the torn basil leaves and let the sauce sit for 5 minutes. Then, using an immersion blender, blend the sauce until smooth. Serve it warm over spaghetti or your favorite pasta."
+          ]
+        }
+      ]
+    },
+    "dom": {
+      "ingredients": [
+        "2 tbsps Olive oil",
+        "1 small-medium Onion finely diced",
+        "3 cloves Garlic crushed",
+        "750 g Cherry tomatoes halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.",
+        "1 teaspoon Dried oregano flakes",
+        "¼ teaspoon Chili pepper flakes or to taste",
+        "1½ tsps Salt or to taste",
+        "¼ teaspoon Cracked black pepper",
+        "1 cup Water",
+        "1 handful Fresh basil leaves"
+      ],
+      "instructions": [],
+      "image_url": "https://plantbasedfolk.com/wp-content/uploads/2024/12/cherry-tomato-spaghetti-sauce.jpg",
+      "ingredient_groups": [
+        {
+          "title": "",
+          "items": [
+            "2 tbsps Olive oil",
+            "1 small-medium Onion finely diced",
+            "3 cloves Garlic crushed",
+            "750 g Cherry tomatoes halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.",
+            "1 teaspoon Dried oregano flakes",
+            "¼ teaspoon Chili pepper flakes or to taste",
+            "1½ tsps Salt or to taste",
+            "¼ teaspoon Cracked black pepper",
+            "1 cup Water",
+            "1 handful Fresh basil leaves"
+          ]
+        }
+      ],
+      "instruction_groups": [],
+      "prep_time": "",
+      "cook_time": "",
+      "total_time": "",
+      "prep_minutes": null,
+      "cook_minutes": null,
+      "total_minutes": null
+    },
+    "wprm": {
+      "title": "Cherry Tomato Spaghetti Sauce",
+      "ingredients": [
+        "2 tbsps Olive oil",
+        "1 small-medium Onion finely diced",
+        "3 cloves Garlic crushed",
+        "750 g Cherry tomatoes halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.",
+        "1 teaspoon Dried oregano flakes",
+        "¼ teaspoon Chili pepper flakes or to taste",
+        "1½ tsps Salt or to taste",
+        "¼ teaspoon Cracked black pepper",
+        "1 cup Water",
+        "1 handful Fresh basil leaves"
+      ],
+      "instructions": [],
+      "image_url": "https://plantbasedfolk.com/wp-content/uploads/2024/12/cherry-tomato-spaghetti-sauce.jpg",
+      "ingredient_groups": [
+        {
+          "title": "",
+          "items": [
+            "2 tbsps Olive oil",
+            "1 small-medium Onion finely diced",
+            "3 cloves Garlic crushed",
+            "750 g Cherry tomatoes halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.",
+            "1 teaspoon Dried oregano flakes",
+            "¼ teaspoon Chili pepper flakes or to taste",
+            "1½ tsps Salt or to taste",
+            "¼ teaspoon Cracked black pepper",
+            "1 cup Water",
+            "1 handful Fresh basil leaves"
+          ]
+        }
+      ],
+      "instruction_groups": [],
+      "servings": "3, 3 cups",
+      "prep_time": "5 minutes",
+      "cook_time": "30 minutes",
+      "total_time": "35 minutes",
+      "prep_minutes": 5,
+      "cook_minutes": 30,
+      "total_minutes": 35
+    }
+  }
+}

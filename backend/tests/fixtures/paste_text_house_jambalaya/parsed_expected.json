@@ -1,0 +1,97 @@
+{
+  "title": "House Jambalaya",
+  "servings": "6",
+  "prep_time": "20 minutes",
+  "cook_time": "45 minutes",
+  "notes": "A bold, one-pot rice dinner loaded with sausage, chicken, and shrimp.\nBest served right from the Dutch oven.\n\nChef's Notes:\nRemove the bay leaves before serving.\nTaste and add more hot sauce if needed.",
+  "ingredients": [
+    "1 lb andouille sausage, sliced into rounds",
+    "1 lb shrimp, peeled and deveined",
+    "1 lb boneless skinless chicken thighs, diced",
+    "1 large yellow onion, diced",
+    "1 green bell pepper, diced",
+    "2 celery ribs, diced",
+    "3 garlic cloves, minced",
+    "1 1/2 cups long-grain rice",
+    "1 (14-ounce) can crushed tomatoes",
+    "2 tsp Cajun seasoning",
+    "1 tsp dried thyme",
+    "2 bay leaves",
+    "3 cups chicken stock",
+    "2 green onions, thinly sliced",
+    "Hot sauce, for serving"
+  ],
+  "instructions": [
+    "Brown the sausage in a Dutch oven; transfer to a bowl.",
+    "Add the chicken and cook until lightly browned.",
+    "Stir in the onion, bell pepper, celery, and garlic until softened.",
+    "Return the sausage to the pot with the rice, tomatoes, stock, Cajun seasoning, thyme, and bay leaves.",
+    "Cover and simmer until the rice is tender.",
+    "Fold in the shrimp and cook just until opaque."
+  ],
+  "ingredient_groups": [
+    {
+      "title": "Meat",
+      "items": [
+        "1 lb andouille sausage, sliced into rounds",
+        "1 lb shrimp, peeled and deveined"
+      ]
+    },
+    {
+      "title": "For the Chicken",
+      "items": [
+        "1 lb boneless skinless chicken thighs, diced"
+      ]
+    },
+    {
+      "title": "Vegetables",
+      "items": [
+        "1 large yellow onion, diced",
+        "1 green bell pepper, diced",
+        "2 celery ribs, diced",
+        "3 garlic cloves, minced"
+      ]
+    },
+    {
+      "title": "Pantry",
+      "items": [
+        "1 1/2 cups long-grain rice",
+        "1 (14-ounce) can crushed tomatoes"
+      ]
+    },
+    {
+      "title": "Seasonings",
+      "items": [
+        "2 tsp Cajun seasoning",
+        "1 tsp dried thyme",
+        "2 bay leaves"
+      ]
+    },
+    {
+      "title": "For the Pot",
+      "items": [
+        "3 cups chicken stock"
+      ]
+    },
+    {
+      "title": "Optional Finishers",
+      "items": [
+        "2 green onions, thinly sliced",
+        "Hot sauce, for serving"
+      ]
+    }
+  ],
+  "instruction_groups": [
+    {
+      "title": "Instructions",
+      "steps": [
+        "Brown the sausage in a Dutch oven; transfer to a bowl.",
+        "Add the chicken and cook until lightly browned.",
+        "Stir in the onion, bell pepper, celery, and garlic until softened.",
+        "Return the sausage to the pot with the rice, tomatoes, stock, Cajun seasoning, thyme, and bay leaves.",
+        "Cover and simmer until the rice is tender.",
+        "Fold in the shrimp and cook just until opaque."
+      ]
+    }
+  ]
+}

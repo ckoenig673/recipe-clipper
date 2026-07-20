@@ -1,0 +1,221 @@
+{
+  "title": "Homemade Chicken Stew",
+  "ingredients": [
+    "2 tbsp olive oil",
+    "800 g boneless, skinless chicken thighs, diced into 2–3 cm (¾–1¼ inch) pieces",
+    "½ tsp sea salt flakes",
+    "¼ tsp freshly cracked black pepper",
+    "60 ml water",
+    "1 brown onion, diced",
+    "1 tbsp freshly grated garlic",
+    "2 stalks celery, diced",
+    "2 carrots, sliced into rounds",
+    "125 ml dry white wine (optional)",
+    "2 tbsp unsalted butter (see note 1 to make recipe dairy-free)",
+    "35 g plain (all-purpose) flour",
+    "1.25 litres chicken stock",
+    "2 tsp dried thyme (can be substituted with Italian mixed herbs/Italian seasoning or dried oregano)",
+    "2 medium potatoes, cut into 3 cm (1¼ inch) pieces (waxy are best)",
+    "1 tbsp Worcestershire sauce",
+    "60 ml thickened (whipping/heavy) cream (optional) (see note 1 to make recipe dairy-free)",
+    "50 g freshly grated parmesan (see note 1 to make recipe dairy-free)",
+    "2 tbsp finely chopped flat-leaf parsley, plus extra for garnish",
+    "Crusty buttered bread, to serve"
+  ],
+  "instructions": [
+    "Brown the chicken – Heat the olive oil in a large, deep, heavy-based pan over medium–high heat. Add the chicken and sprinkle it with salt and pepper. Cook for 3–4 minutes, tossing regularly until browned all over. Remove the chicken and set aside (it will continue cooking in the stew).",
+    "Add the water to the pan and stir to scrape up any tasty bits stuck to the bottom of the pan.",
+    "Cook the veggies – To the same pan, add the onion, garlic, celery and carrot. Cook, stirring, for 3–4 minutes until slightly softened.",
+    "Make the stew – Add the white wine and cook, stirring, for 1–2 minutes, or until most of the liquid has evaporated.",
+    "Add the butter and cook for 1 minute, or until melted, then add the flour, stirring for 1 minute or until the flour has dissolved and formed a paste around the vegetables.",
+    "Cook the chicken in the stew – Return the chicken to the pan. Add the chicken stock, dried thyme, potatoes and Worcestershire sauce. Bring to the boil, then reduce the heat to low and simmer, uncovered, for 15–18 minutes or until the vegetables are tender and the soup has thickened.",
+    "Add the cream and cheese – Turn the heat off. Add the cream and parmesan (if using), followed by the parsley. Stir to combine.",
+    "Serve – To serve, divide the stew among four bowls, top with extra parsley and season again with salt and pepper if needed. Serve with the crusty buttered bread on the side."
+  ],
+  "servings": "4",
+  "prep_time": "10 minutes",
+  "cook_time": "30 minutes",
+  "total_time": "40 minutes",
+  "prep_minutes": 10,
+  "cook_minutes": 30,
+  "total_minutes": 40,
+  "ingredient_groups": [
+    {
+      "title": "",
+      "items": [
+        "2 tbsp olive oil",
+        "800 g boneless, skinless chicken thighs, diced into 2–3 cm (¾–1¼ inch) pieces",
+        "½ tsp sea salt flakes",
+        "¼ tsp freshly cracked black pepper",
+        "60 ml water",
+        "1 brown onion, diced",
+        "1 tbsp freshly grated garlic",
+        "2 stalks celery, diced",
+        "2 carrots, sliced into rounds",
+        "125 ml dry white wine (optional)",
+        "2 tbsp unsalted butter (see note 1 to make recipe dairy-free)",
+        "35 g plain (all-purpose) flour",
+        "1.25 litres chicken stock",
+        "2 tsp dried thyme (can be substituted with Italian mixed herbs/Italian seasoning or dried oregano)",
+        "2 medium potatoes, cut into 3 cm (1¼ inch) pieces (waxy are best)",
+        "1 tbsp Worcestershire sauce",
+        "60 ml thickened (whipping/heavy) cream (optional) (see note 1 to make recipe dairy-free)",
+        "50 g freshly grated parmesan (see note 1 to make recipe dairy-free)",
+        "2 tbsp finely chopped flat-leaf parsley, plus extra for garnish",
+        "Crusty buttered bread, to serve"
+      ]
+    }
+  ],
+  "instruction_groups": [
+    {
+      "title": "Instructions",
+      "steps": [
+        "Brown the chicken – Heat the olive oil in a large, deep, heavy-based pan over medium–high heat. Add the chicken and sprinkle it with salt and pepper. Cook for 3–4 minutes, tossing regularly until browned all over. Remove the chicken and set aside (it will continue cooking in the stew).",
+        "Add the water to the pan and stir to scrape up any tasty bits stuck to the bottom of the pan.",
+        "Cook the veggies – To the same pan, add the onion, garlic, celery and carrot. Cook, stirring, for 3–4 minutes until slightly softened.",
+        "Make the stew – Add the white wine and cook, stirring, for 1–2 minutes, or until most of the liquid has evaporated.",
+        "Add the butter and cook for 1 minute, or until melted, then add the flour, stirring for 1 minute or until the flour has dissolved and formed a paste around the vegetables.",
+        "Cook the chicken in the stew – Return the chicken to the pan. Add the chicken stock, dried thyme, potatoes and Worcestershire sauce. Bring to the boil, then reduce the heat to low and simmer, uncovered, for 15–18 minutes or until the vegetables are tender and the soup has thickened.",
+        "Add the cream and cheese – Turn the heat off. Add the cream and parmesan (if using), followed by the parsley. Stir to combine.",
+        "Serve – To serve, divide the stew among four bowls, top with extra parsley and season again with salt and pepper if needed. Serve with the crusty buttered bread on the side."
+      ]
+    }
+  ],
+  "image_url": "https://simplehomeedit.com/wp-content/uploads/2025/04/Homemade-Chicken-Stew-3.webp",
+  "_selected_source": "jsonld",
+  "_selected_reason": "jsonld-default",
+  "_parser_counts": {
+    "jsonld": {
+      "ingredients": 20,
+      "instructions": 8,
+      "ingredient_groups": 1,
+      "instruction_groups": 1
+    },
+    "dom": {
+      "ingredients": 0,
+      "instructions": 0,
+      "ingredient_groups": 0,
+      "instruction_groups": 0
+    },
+    "wprm": {
+      "ingredients": 0,
+      "instructions": 0,
+      "ingredient_groups": 0,
+      "instruction_groups": 0
+    }
+  },
+  "_raw_sources": {
+    "jsonld": {
+      "title": "Homemade Chicken Stew",
+      "ingredients": [
+        "2 tbsp olive oil",
+        "800 g boneless, skinless chicken thighs, diced into 2–3 cm (¾–1¼ inch) pieces",
+        "½ tsp sea salt flakes",
+        "¼ tsp freshly cracked black pepper",
+        "60 ml water",
+        "1 brown onion, diced",
+        "1 tbsp freshly grated garlic",
+        "2 stalks celery, diced",
+        "2 carrots, sliced into rounds",
+        "125 ml dry white wine (optional)",
+        "2 tbsp unsalted butter (see note 1 to make recipe dairy-free)",
+        "35 g plain (all-purpose) flour",
+        "1.25 litres chicken stock",
+        "2 tsp dried thyme (can be substituted with Italian mixed herbs/Italian seasoning or dried oregano)",
+        "2 medium potatoes, cut into 3 cm (1¼ inch) pieces (waxy are best)",
+        "1 tbsp Worcestershire sauce",
+        "60 ml thickened (whipping/heavy) cream (optional) (see note 1 to make recipe dairy-free)",
+        "50 g freshly grated parmesan (see note 1 to make recipe dairy-free)",
+        "2 tbsp finely chopped flat-leaf parsley, plus extra for garnish",
+        "Crusty buttered bread, to serve"
+      ],
+      "instructions": [
+        "Brown the chicken – Heat the olive oil in a large, deep, heavy-based pan over medium–high heat. Add the chicken and sprinkle it with salt and pepper. Cook for 3–4 minutes, tossing regularly until browned all over. Remove the chicken and set aside (it will continue cooking in the stew).",
+        "Add the water to the pan and stir to scrape up any tasty bits stuck to the bottom of the pan.",
+        "Cook the veggies – To the same pan, add the onion, garlic, celery and carrot. Cook, stirring, for 3–4 minutes until slightly softened.",
+        "Make the stew – Add the white wine and cook, stirring, for 1–2 minutes, or until most of the liquid has evaporated.",
+        "Add the butter and cook for 1 minute, or until melted, then add the flour, stirring for 1 minute or until the flour has dissolved and formed a paste around the vegetables.",
+        "Cook the chicken in the stew – Return the chicken to the pan. Add the chicken stock, dried thyme, potatoes and Worcestershire sauce. Bring to the boil, then reduce the heat to low and simmer, uncovered, for 15–18 minutes or until the vegetables are tender and the soup has thickened.",
+        "Add the cream and cheese – Turn the heat off. Add the cream and parmesan (if using), followed by the parsley. Stir to combine.",
+        "Serve – To serve, divide the stew among four bowls, top with extra parsley and season again with salt and pepper if needed. Serve with the crusty buttered bread on the side."
+      ],
+      "servings": "4",
+      "prep_time": "10 minutes",
+      "cook_time": "30 minutes",
+      "total_time": "40 minutes",
+      "prep_minutes": 10,
+      "cook_minutes": 30,
+      "total_minutes": 40,
+      "ingredient_groups": [
+        {
+          "title": "",
+          "items": [
+            "2 tbsp olive oil",
+            "800 g boneless, skinless chicken thighs, diced into 2–3 cm (¾–1¼ inch) pieces",
+            "½ tsp sea salt flakes",
+            "¼ tsp freshly cracked black pepper",
+            "60 ml water",
+            "1 brown onion, diced",
+            "1 tbsp freshly grated garlic",
+            "2 stalks celery, diced",
+            "2 carrots, sliced into rounds",
+            "125 ml dry white wine (optional)",
+            "2 tbsp unsalted butter (see note 1 to make recipe dairy-free)",
+            "35 g plain (all-purpose) flour",
+            "1.25 litres chicken stock",
+            "2 tsp dried thyme (can be substituted with Italian mixed herbs/Italian seasoning or dried oregano)",
+            "2 medium potatoes, cut into 3 cm (1¼ inch) pieces (waxy are best)",
+            "1 tbsp Worcestershire sauce",
+            "60 ml thickened (whipping/heavy) cream (optional) (see note 1 to make recipe dairy-free)",
+            "50 g freshly grated parmesan (see note 1 to make recipe dairy-free)",
+            "2 tbsp finely chopped flat-leaf parsley, plus extra for garnish",
+            "Crusty buttered bread, to serve"
+          ]
+        }
+      ],
+      "instruction_groups": [
+        {
+          "title": "",
+          "steps": [
+            "Brown the chicken – Heat the olive oil in a large, deep, heavy-based pan over medium–high heat. Add the chicken and sprinkle it with salt and pepper. Cook for 3–4 minutes, tossing regularly until browned all over. Remove the chicken and set aside (it will continue cooking in the stew).",
+            "Add the water to the pan and stir to scrape up any tasty bits stuck to the bottom of the pan.",
+            "Cook the veggies – To the same pan, add the onion, garlic, celery and carrot. Cook, stirring, for 3–4 minutes until slightly softened.",
+            "Make the stew – Add the white wine and cook, stirring, for 1–2 minutes, or until most of the liquid has evaporated.",
+            "Add the butter and cook for 1 minute, or until melted, then add the flour, stirring for 1 minute or until the flour has dissolved and formed a paste around the vegetables.",
+            "Cook the chicken in the stew – Return the chicken to the pan. Add the chicken stock, dried thyme, potatoes and Worcestershire sauce. Bring to the boil, then reduce the heat to low and simmer, uncovered, for 15–18 minutes or until the vegetables are tender and the soup has thickened.",
+            "Add the cream and cheese – Turn the heat off. Add the cream and parmesan (if using), followed by the parsley. Stir to combine.",
+            "Serve – To serve, divide the stew among four bowls, top with extra parsley and season again with salt and pepper if needed. Serve with the crusty buttered bread on the side."
+          ]
+        }
+      ]
+    },
+    "dom": {
+      "ingredients": [],
+      "instructions": [],
+      "image_url": "https://simplehomeedit.com/wp-content/uploads/2025/04/Homemade-Chicken-Stew-3.webp",
+      "ingredient_groups": [],
+      "instruction_groups": [],
+      "prep_time": "",
+      "cook_time": "",
+      "total_time": "",
+      "prep_minutes": null,
+      "cook_minutes": null,
+      "total_minutes": null
+    },
+    "wprm": {
+      "title": "Homemade Chicken Stew",
+      "ingredients": [],
+      "instructions": [],
+      "image_url": "https://simplehomeedit.com/wp-content/uploads/2025/04/Homemade-Chicken-Stew-3.webp",
+      "ingredient_groups": [],
+      "instruction_groups": [],
+      "servings": "4",
+      "prep_time": "10 minutes",
+      "cook_time": "30 minutes",
+      "total_time": "40 minutes",
+      "prep_minutes": 10,
+      "cook_minutes": 30,
+      "total_minutes": 40
+    }
+  }
+}

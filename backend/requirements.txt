@@ -1,0 +1,12 @@
+requests
+fastapi
+uvicorn
+pydantic
+python-multipart
+argon2-cffi
+playwright
+selenium
+yt-dlp
+beautifulsoup4
+lxml
+faster-whisper
