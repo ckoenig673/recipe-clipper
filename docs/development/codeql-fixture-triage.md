@@ -19,6 +19,7 @@ These files are inert regression fixtures:
 
 Treatment:
 
-- Exclude only `backend/tests/fixtures/**` in `.github/codeql/codeql-config.yml`.
+- Keep GitHub CodeQL default setup as the repository authority; do not add a repository-managed advanced CodeQL workflow just to exclude fixtures.
+- Triage alerts `#67`, `#68`, and `#69` in GitHub as inert test or generated content with this note as the supporting justification.
 - Do not edit captured third-party HTML just to silence CodeQL.
 - Keep production and source findings in scope, including `frontend/app.js` alert `#66`.
