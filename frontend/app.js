@@ -2583,7 +2583,11 @@ function normalizePreviewImageUrl(value) {
   }
 
   try {
-    const parsed = new URL(normalized);
+    const baseUri =
+      typeof document !== "undefined" && typeof document.baseURI === "string" && document.baseURI
+        ? document.baseURI
+        : undefined;
+    const parsed = baseUri ? new URL(normalized, baseUri) : new URL(normalized);
     const protocol = parsed.protocol.toLowerCase();
     if (protocol === "http:" || protocol === "https:") {
       return parsed.href;
@@ -3337,7 +3341,11 @@ function renderEditImagePreview() {
   const imageUrl = String(imageUrlInput?.value || "").trim();
   const previewImageUrl = normalizePreviewImageUrl(imageUrl);
   if (editImagePreview) {
-    editImagePreview.src = previewImageUrl;
+    if (previewImageUrl) {
+      editImagePreview.src = previewImageUrl;
+    } else {
+      editImagePreview.removeAttribute("src");
+    }
     editImagePreview.classList.toggle("hidden", !previewImageUrl);
   }
   if (editImagePlaceholder) {
