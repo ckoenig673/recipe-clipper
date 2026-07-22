@@ -9904,7 +9904,7 @@ def extract_metadata(
                 social_resolution = resolve_social_url(raw_url)
             except Exception as exc:
                 logger.exception("social-share-url resolution failed source_url=%s error=%s", raw_url, str(exc))
-                fallback_reason = f"social_resolver_failed:{exc}"
+                fallback_reason = "social_resolver_failed"
                 social_resolution = SimpleNamespace(
                     canonical_url="",
                     post_id="",
@@ -9917,6 +9917,7 @@ def extract_metadata(
                     ytdlp_title="",
                     ytdlp_description="",
                     ytdlp_webpage_url="",
+                    ytdlp_description_urls=[],
                     ytdlp_description_urls=[],
                 )
             extracted_url = (social_resolution.resolved_url or "").strip()
