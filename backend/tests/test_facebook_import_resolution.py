@@ -315,7 +315,9 @@ def test_social_resolver_exception_still_runs_recovery_and_transcript_fallback()
     mock_recovery.assert_called_once()
     assert payload["status"] == "partial"
     assert payload["url"] == social_url
-    assert payload["reason"] == "We couldn’t extract the shared link directly, and recovery attempts did not find a recipe."
+    assert payload["reason"] == "We couldn’t process the shared video transcript automatically. Please try again."
+    assert payload["social_metadata"]["error"] == "social_resolver_failed"
+    assert "resolver exploded" not in json.dumps(payload)
 
 
 def test_social_transcript_pipeline_returns_recipe_when_caption_not_recipe_like():
