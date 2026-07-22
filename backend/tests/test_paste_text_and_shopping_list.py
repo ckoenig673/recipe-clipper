@@ -185,6 +185,31 @@ def test_parse_pasted_recipe_text_does_not_treat_legitimate_short_ingredients_as
     assert parsed["ingredients"] == ["Kosher Salt", "Black Pepper", "1 cup rice"]
 
 
+def test_parse_pasted_recipe_text_handles_adversarial_metadata_spacing_quickly():
+    repeated_space = " " * 500
+    raw_text = "\n".join(
+        [
+            "Weeknight Chili",
+            f"Servings{repeated_space}:{repeated_space}6",
+            f"Prep Time{repeated_space}-{repeated_space}15 minutes",
+            f"Cook Time{repeated_space}:{repeated_space}45 minutes",
+            f"Total Time{repeated_space}-{repeated_space}1 hour",
+            "Ingredients",
+            "1 lb beef",
+            "Instructions",
+            "Simmer until thick.",
+        ]
+    )
+
+    parsed = main._parse_pasted_recipe_text(raw_text)
+
+    assert parsed["title"] == "Weeknight Chili"
+    assert parsed["servings"] == "6"
+    assert parsed["prep_time"] == "15 minutes"
+    assert parsed["cook_time"] == "45 minutes"
+    assert parsed["total_time"] == "1 hour"
+
+
 def test_import_text_endpoint_returns_parsed_payload():
     client = TestClient(main.app)
     main.app.dependency_overrides[main.require_user] = lambda: {"id": 1}

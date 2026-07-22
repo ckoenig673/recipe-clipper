@@ -767,3 +767,46 @@ def test_parse_pasted_recipe_text_bounds_oversized_metadata_lines():
     assert parsed["title"] == "Weeknight Soup"
     assert parsed["prep_time"] == "15 minutes"
     assert parsed["ingredients"] == ["1 cup broth"]
+
+
+def test_normalize_plain_string_list_handles_adversarial_period_spacing_quickly():
+    noisy = "teaspoons" + (" " * 12000) + "." + (" " * 12000) + "mustard"
+
+    started = time.perf_counter()
+    normalized = main._normalize_plain_string_list([noisy])
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert normalized == ["teaspoons mustard"]
+
+
+def test_is_non_ingredient_header_line_handles_large_split_header_input_quickly():
+    candidate = "Protein; " + ("lean " * 8000) + "green"
+
+    started = time.perf_counter()
+    result = main._is_non_ingredient_header_line(candidate)
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert result is True
+
+
+def test_extract_ingredient_candidates_keeps_embedded_simple_ingredients_with_adversarial_spacing():
+    repeated_space = " " * 12000
+    text = "\n".join(
+        [
+            "Ingredients",
+            f"Use 2{repeated_space}chopped onion, 3{repeated_space}garlic cloves, then simmer.",
+            "Instructions",
+            "Stir and serve.",
+        ]
+    )
+    lines = [line for line in text.split("\n") if line.strip()]
+
+    started = time.perf_counter()
+    ingredients = main._extract_ingredient_candidates_from_text(lines, text)
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert "2 chopped onion" in ingredients
+    assert "3 garlic cloves" in ingredients

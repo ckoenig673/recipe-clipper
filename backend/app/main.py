@@ -1737,6 +1737,219 @@ INGREDIENT_FOODISH_WORD_RE = re.compile(
 )
 
 
+_AI_HEADER_LABEL_NAMES = {
+    "lean",
+    "leaner",
+    "leanest",
+    "green",
+    "healthy fat",
+    "healthy fats",
+    "condiment",
+    "condiments",
+    "fueling",
+    "fuelings",
+    "lean and green",
+}
+_EMBEDDED_INGREDIENT_PREPARATIONS = {"diced", "chopped", "minced", "sliced", "crushed"}
+_EMBEDDED_INGREDIENT_NOUNS = {
+    ("onion",),
+    ("onions",),
+    ("carrot",),
+    ("carrots",),
+    ("celery",),
+    ("celery", "stalk"),
+    ("celery", "stalks"),
+    ("garlic",),
+    ("garlic", "clove"),
+    ("garlic", "cloves"),
+}
+_PASTED_SERVINGS_LABELS = ("serving", "servings", "serves")
+_PASTED_PREP_LABELS = ("prep time", "preparation time")
+_PASTED_COOK_LABELS = ("cook time", "cooking time")
+_PASTED_TOTAL_LABELS = ("total time",)
+
+
+def _collapse_space_before_periods(text: str) -> str:
+    if "." not in text:
+        return text
+    cleaned_chars: list[str] = []
+    for char in text:
+        if char == ".":
+            while cleaned_chars and cleaned_chars[-1].isspace():
+                cleaned_chars.pop()
+        cleaned_chars.append(char)
+    return "".join(cleaned_chars)
+
+
+def _remove_orphan_word_periods(text: str) -> str:
+    if "." not in text:
+        return text
+    chars = list(text)
+    result: list[str] = []
+    for index, char in enumerate(chars):
+        if char != ".":
+            result.append(char)
+            continue
+
+        left_index = index - 1
+        letter_count = 0
+        while left_index >= 0 and chars[left_index].isalpha():
+            letter_count += 1
+            left_index -= 1
+
+        right_index = index + 1
+        saw_space = False
+        while right_index < len(chars) and chars[right_index].isspace():
+            saw_space = True
+            right_index += 1
+
+        if letter_count >= 4 and saw_space and right_index < len(chars) and (chars[right_index].isalnum() or chars[right_index] == "_"):
+            continue
+        result.append(char)
+    return "".join(result)
+
+
+def _split_text_on_delimiters(text: str, delimiters: tuple[str, ...]) -> list[str]:
+    parts: list[str] = []
+    current: list[str] = []
+    index = 0
+    while index < len(text):
+        matched = None
+        for delimiter in delimiters:
+            if text.startswith(delimiter, index):
+                matched = delimiter
+                break
+        if matched is not None:
+            part = "".join(current).strip()
+            if part:
+                parts.append(part)
+            current = []
+            index += len(matched)
+            continue
+        current.append(text[index])
+        index += 1
+    part = "".join(current).strip()
+    if part:
+        parts.append(part)
+    return parts
+
+
+def _is_ai_header_label_line(value: str) -> bool:
+    tokens = value.lower().split()
+    if not tokens:
+        return False
+    if tokens[0].isdigit():
+        tokens = tokens[1:]
+    return " ".join(tokens) in _AI_HEADER_LABEL_NAMES
+
+
+def _looks_like_ai_ingredient_amount(value: str) -> bool:
+    quantity, _ = _parse_ingredient_quantity(value)
+    return quantity is not None
+
+
+def _looks_like_embedded_simple_ingredient(value: str) -> bool:
+    candidate = _clean_ingredient_candidate(value)
+    if not candidate:
+        return False
+    quantity, remainder = _parse_ingredient_quantity(candidate)
+    if quantity is None or not remainder:
+        return False
+
+    tokens = [token.strip(".,:;()").lower() for token in remainder.split()]
+    tokens = [token for token in tokens if token]
+    if not tokens:
+        return False
+    if tokens[0] in _EMBEDDED_INGREDIENT_PREPARATIONS:
+        tokens = tokens[1:]
+    return tuple(tokens) in _EMBEDDED_INGREDIENT_NOUNS
+
+
+def _extract_embedded_simple_ingredient_phrases(value: str) -> list[str]:
+    candidate = _clean_ingredient_candidate(value)
+    if not candidate:
+        return []
+
+    raw_tokens = candidate.split()
+    matches: list[str] = []
+    for index in range(len(raw_tokens)):
+        segment = " ".join(raw_tokens[index:])
+        quantity, remainder = _parse_ingredient_quantity(segment)
+        if quantity is None or not remainder:
+            continue
+
+        remainder_tokens = [token.strip(".,:;()").lower() for token in remainder.split()]
+        remainder_tokens = [token for token in remainder_tokens if token]
+        if not remainder_tokens:
+            continue
+
+        phrase_tokens = [_format_display_quantity(quantity)]
+        noun_tokens = remainder_tokens
+        if remainder_tokens[0] in _EMBEDDED_INGREDIENT_PREPARATIONS:
+            phrase_tokens.append(remainder_tokens[0])
+            noun_tokens = remainder_tokens[1:]
+
+        noun_tuple = None
+        for candidate_noun in sorted(_EMBEDDED_INGREDIENT_NOUNS, key=len, reverse=True):
+            if tuple(noun_tokens[: len(candidate_noun)]) == candidate_noun:
+                noun_tuple = candidate_noun
+                break
+        if noun_tuple is None:
+            continue
+
+        phrase_tokens.extend(noun_tuple)
+        phrase = " ".join(token for token in phrase_tokens if token).strip()
+        if phrase:
+            matches.append(phrase)
+
+    return _dedupe_text_entries(matches)
+
+
+def _looks_like_quantity_or_unit_prefix(value: str) -> bool:
+    candidate = _clean_ingredient_candidate(value)
+    if not candidate:
+        return False
+    quantity, remainder = _parse_ingredient_quantity(candidate)
+    if quantity is not None:
+        remainder = remainder.lstrip()
+        if remainder.lower().startswith("x "):
+            remainder = remainder[2:].lstrip()
+        token = remainder.split(None, 1)[0].rstrip(".,:;").lower() if remainder else ""
+        return token in _INGREDIENT_UNIT_ALIASES or token in {"pinch", "handful", "clove", "cloves"}
+    token = candidate.split(None, 1)[0].rstrip(".,:;").lower()
+    return token in _INGREDIENT_UNIT_ALIASES or token in {"pinch", "handful", "clove", "cloves"}
+
+
+def _contains_measurement(value: str) -> bool:
+    candidate = _clean_ingredient_candidate(value)
+    if not candidate:
+        return False
+    tokens = candidate.split()
+    for index, token in enumerate(tokens):
+        normalized = token.strip(".,:;()").lower()
+        if normalized not in _INGREDIENT_UNIT_ALIASES or index == 0:
+            continue
+        prefix = " ".join(tokens[max(0, index - 2):index])
+        quantity, remainder = _parse_ingredient_quantity(prefix)
+        if quantity is not None and not remainder:
+            return True
+    return False
+
+
+def _extract_labeled_metadata_value(value: str, labels: tuple[str, ...]) -> str | None:
+    candidate = _clean_text(value)
+    lowered = candidate.lower()
+    for label in sorted(labels, key=len, reverse=True):
+        if not lowered.startswith(label):
+            continue
+        remainder = candidate[len(label):].lstrip()
+        if not remainder or remainder[0] not in ":-":
+            continue
+        extracted = _clean_text(remainder[1:])
+        return extracted or None
+    return None
+
+
 def _clean_ingredient_candidate(text: str) -> str:
     cleaned = _clean_text(text).strip(" -•*")
     cleaned = re.sub(r"^(?:add|mix in|stir in|top with)\s+", "", cleaned, flags=re.IGNORECASE)
@@ -1762,11 +1975,6 @@ def _should_keep_short_unmeasured_ingredient_line(candidate: str) -> bool:
 
 
 def _extract_ingredient_candidates_from_text(lines: list[str], text: str) -> list[str]:
-    quantity_re = re.compile(
-        r"^\s*(?:[-•*]\s*)?(?:\d+(?:[\.,]\d+)?(?:/\d+)?\s*)?(?:x\s*)?(?:"
-        r"g|grams?|kg|ml|l|tbsp|tsp|cups?|oz|lb|cloves?|pinch|handful)\b",
-        flags=re.IGNORECASE,
-    )
     ingredients: list[str] = []
     for line in lines:
         cleaned = _clean_ingredient_candidate(line)
@@ -1775,28 +1983,21 @@ def _extract_ingredient_candidates_from_text(lines: list[str], text: str) -> lis
         lowered = cleaned.lower()
         if any(lowered.startswith(prefix) for prefix in ("method", "instructions", "directions", "steps")):
             continue
-        if quantity_re.search(cleaned) or re.search(r"\b\d+(?:[\.,]\d+)?\s*(?:g|ml|tbsp|tsp|cups?)\b", cleaned, re.IGNORECASE):
+        if _looks_like_quantity_or_unit_prefix(cleaned) or _contains_measurement(cleaned):
             ingredients.append(cleaned)
             continue
         if _should_keep_short_unmeasured_ingredient_line(cleaned):
             ingredients.append(cleaned)
 
     if len(ingredients) < 2:
-        phrase_candidates = re.split(r"[,\n;]", text)
+        phrase_candidates = _split_text_on_delimiters(text, (",", "\n", ";"))
         for phrase in phrase_candidates:
             cleaned = _clean_ingredient_candidate(phrase)
-            if re.search(r"\b\d+(?:[\.,]\d+)?\s*(?:g|ml|tbsp|tsp|cups?)\b", cleaned, re.IGNORECASE):
+            if _contains_measurement(cleaned):
                 ingredients.append(cleaned)
 
-    embedded_pattern = re.compile(
-        r"\b\d+(?:[\.,]\d+)?\s+(?:diced|chopped|minced|sliced|crushed)?\s*"
-        r"(?:onions?|carrots?|celery(?:\s+stalks?)?|garlic(?:\s+cloves?)?)\b",
-        flags=re.IGNORECASE,
-    )
-    for match in embedded_pattern.finditer(text):
-        cleaned = _clean_ingredient_candidate(match.group(0))
-        if cleaned:
-            ingredients.append(cleaned)
+    for phrase in _split_text_on_delimiters(text, (",", "\n", ";")):
+        ingredients.extend(_extract_embedded_simple_ingredient_phrases(phrase))
 
     extra_match = re.search(r"\bextra\s+(?:cheddar|chedder)\b", text, flags=re.IGNORECASE)
     if extra_match:
@@ -2033,21 +2234,21 @@ def _parse_pasted_recipe_text(raw_text: str) -> dict:
             note_heading = line.rstrip(":").strip()
             continue
 
-        servings_match = re.match(r"^servings?\s*[:\-]\s*(.+)$", line, flags=re.IGNORECASE)
-        if servings_match:
-            servings = _clean_text(servings_match.group(1))
+        servings_value = _extract_labeled_metadata_value(line, _PASTED_SERVINGS_LABELS)
+        if servings_value:
+            servings = servings_value
             continue
-        prep_match = re.match(r"^prep(?:aration)?\s*time\s*[:\-]\s*(.+)$", line, flags=re.IGNORECASE)
-        if prep_match:
-            prep_time = _clean_text(prep_match.group(1))
+        prep_value = _extract_labeled_metadata_value(line, _PASTED_PREP_LABELS)
+        if prep_value:
+            prep_time = prep_value
             continue
-        cook_match = re.match(r"^cook(?:ing)?\s*time\s*[:\-]\s*(.+)$", line, flags=re.IGNORECASE)
-        if cook_match:
-            cook_time = _clean_text(cook_match.group(1))
+        cook_value = _extract_labeled_metadata_value(line, _PASTED_COOK_LABELS)
+        if cook_value:
+            cook_time = cook_value
             continue
-        total_match = re.match(r"^total\s*time\s*[:\-]\s*(.+)$", line, flags=re.IGNORECASE)
-        if total_match:
-            total_time = _clean_text(total_match.group(1))
+        total_value = _extract_labeled_metadata_value(line, _PASTED_TOTAL_LABELS)
+        if total_value:
+            total_time = total_value
             continue
 
         if not title and not current_section:
@@ -6189,14 +6390,8 @@ def _normalize_plain_string_list(value) -> list[str]:
     for item in values:
         cleaned = _stringify_recipe_component(item, prefer_ingredient_order=True)
         cleaned = _normalize_spoken_ingredient_text(cleaned)
-
-        # Fix stray spacing before punctuation (e.g., "teaspoons . mustard")
-        cleaned = re.sub(r"\s+\.", ".", cleaned)
-
-        # Remove orphan periods between words (e.g., "teaspoons. mustard" → "teaspoons mustard")
-        cleaned = re.sub(r"([A-Za-z]{4,})\.(?=\s+\w)", r"\1", cleaned)
-
-        # Normalize extra spaces again after cleanup
+        cleaned = _collapse_space_before_periods(cleaned)
+        cleaned = _remove_orphan_word_periods(cleaned)
         cleaned = " ".join(cleaned.split())
         if cleaned:
             cleaned_items.append(cleaned)
@@ -6232,17 +6427,17 @@ def _is_non_ingredient_header_line(value: str) -> bool:
     if re.match(r"^(?:for the|to serve|for serving|optional(?: toppings?| garnish| finishers?)?)\b", lowered):
         return True
 
-    if re.fullmatch(r"(?:\d+\s+)?(?:lean(?:er|est)?|green|healthy\s+fat(?:s)?|condiment(?:s)?|fuelings?)", lowered):
+    if _is_ai_header_label_line(lowered):
         return True
 
     if ";" in candidate or " - " in candidate or " | " in candidate:
-        parts = [part.strip() for part in re.split(r"\s*(?:;| \- |\|)\s*", candidate) if part.strip()]
+        parts = _split_text_on_delimiters(candidate, (";", " - ", "|"))
         if len(parts) >= 2:
             trailing = " ".join(parts[1:])
             if _AI_INGREDIENT_HEADER_LABEL_PATTERN.search(trailing):
                 return True
 
-    if _AI_INGREDIENT_AMOUNT_PATTERN.search(candidate):
+    if _looks_like_ai_ingredient_amount(candidate):
         return False
 
     return False
@@ -6804,8 +6999,8 @@ def _normalize_plain_string_list(value) -> list[str]:
     for item in values:
         cleaned = _stringify_recipe_component(item, prefer_ingredient_order=True)
         cleaned = _normalize_spoken_ingredient_text(_bounded_text(cleaned, MAX_REGEX_TEXT_CHARS))
-        cleaned = re.sub(r"\s+\.", ".", cleaned[:MAX_REGEX_TEXT_CHARS])
-        cleaned = re.sub(r"([A-Za-z]{4,})\.(?=\s+\w)", r"\1", cleaned)
+        cleaned = _collapse_space_before_periods(cleaned[:MAX_REGEX_TEXT_CHARS])
+        cleaned = _remove_orphan_word_periods(cleaned)
         cleaned = " ".join(cleaned.split())
         if cleaned:
             cleaned_items.append(cleaned)
@@ -6823,13 +7018,13 @@ def _is_non_ingredient_header_line(value: str) -> bool:
         return True
     if re.match(r"^(?:for the|to serve|for serving|optional(?: toppings?| garnish| finishers?)?)\b", lowered):
         return True
-    if re.fullmatch(r"(?:\d+\s+)?(?:lean(?:er|est)?|green|healthy\s+fat(?:s)?|condiment(?:s)?|fuelings?)", lowered):
+    if _is_ai_header_label_line(lowered):
         return True
     if ";" in candidate or " - " in candidate or " | " in candidate:
-        parts = [part.strip() for part in re.split(r"\s*(?:;| \- |\|)\s*", candidate) if part.strip()]
+        parts = _split_text_on_delimiters(candidate, (";", " - ", "|"))
         if len(parts) >= 2 and _AI_INGREDIENT_HEADER_LABEL_PATTERN.search(" ".join(parts[1:])):
             return True
-    if _AI_INGREDIENT_AMOUNT_PATTERN.search(candidate):
+    if _looks_like_ai_ingredient_amount(candidate):
         return False
     if INGREDIENT_OPTIONAL_WORDING_RE.search(candidate) or INGREDIENT_FOODISH_WORD_RE.search(candidate):
         return False
@@ -6865,35 +7060,6 @@ def _extract_ingredient_candidates_from_text(lines: list[str], text: str) -> lis
             return cleaned[1:].lstrip()
         return cleaned
 
-    def _looks_like_quantity_or_unit_prefix(value: str) -> bool:
-        candidate = _strip_leading_bullet_token(value)
-        if not candidate:
-            return False
-        quantity, remainder = _parse_ingredient_quantity(candidate)
-        if quantity is not None:
-            remainder = remainder.lstrip()
-            if remainder.lower().startswith("x "):
-                remainder = remainder[2:].lstrip()
-            token = remainder.split(None, 1)[0].rstrip(".,:;").lower() if remainder else ""
-            return token in _INGREDIENT_UNIT_ALIASES or token in {"pinch", "handful", "clove", "cloves"}
-        token = candidate.split(None, 1)[0].rstrip(".,:;").lower()
-        return token in _INGREDIENT_UNIT_ALIASES or token in {"pinch", "handful", "clove", "cloves"}
-
-    def _contains_measurement(value: str) -> bool:
-        candidate = _trim_candidate_line(value)
-        if not candidate:
-            return False
-        tokens = candidate.split()
-        for index, token in enumerate(tokens):
-            normalized = token.strip(".,:;()").lower()
-            if normalized not in _INGREDIENT_UNIT_ALIASES or index == 0:
-                continue
-            prefix = " ".join(tokens[max(0, index - 2):index])
-            quantity, remainder = _parse_ingredient_quantity(prefix)
-            if quantity is not None and not remainder:
-                return True
-        return False
-
     bounded_text = _clean_text(text)[:MAX_REGEX_TEXT_CHARS]
     ingredients: list[str] = []
     for line in lines:
@@ -6910,20 +7076,13 @@ def _extract_ingredient_candidates_from_text(lines: list[str], text: str) -> lis
             ingredients.append(cleaned)
 
     if len(ingredients) < 2:
-        for phrase in re.split(r"[,\n;]", bounded_text):
+        for phrase in _split_text_on_delimiters(bounded_text, (",", "\n", ";")):
             cleaned = _clean_ingredient_candidate(phrase)
             if _contains_measurement(cleaned):
                 ingredients.append(cleaned)
 
-    for match in re.finditer(
-        r"\b\d+(?:[\.,]\d+)?\s+(?:diced|chopped|minced|sliced|crushed)?\s*"
-        r"(?:onions?|carrots?|celery(?:\s+stalks?)?|garlic(?:\s+cloves?)?)\b",
-        bounded_text,
-        flags=re.IGNORECASE,
-    ):
-        cleaned = _clean_ingredient_candidate(match.group(0))
-        if cleaned:
-            ingredients.append(cleaned)
+    for phrase in _split_text_on_delimiters(bounded_text, (",", "\n", ";")):
+        ingredients.extend(_extract_embedded_simple_ingredient_phrases(phrase))
 
     extra_match = re.search(r"\bextra\s+(?:cheddar|chedder)\b", bounded_text, flags=re.IGNORECASE)
     if extra_match:
@@ -7052,21 +7211,21 @@ def _parse_pasted_recipe_text(raw_text: str) -> dict:
             note_heading = bounded_line.rstrip(":").strip()
             continue
 
-        servings_match = re.match(r"^servings?\s*[:\-]\s*(.+)$", bounded_line, flags=re.IGNORECASE)
-        if servings_match:
-            servings = _clean_text(servings_match.group(1))
+        servings_value = _extract_labeled_metadata_value(bounded_line, _PASTED_SERVINGS_LABELS)
+        if servings_value:
+            servings = servings_value
             continue
-        prep_match = re.match(r"^prep(?:aration)?\s*time\s*[:\-]\s*(.+)$", bounded_line, flags=re.IGNORECASE)
-        if prep_match:
-            prep_time = _clean_text(prep_match.group(1))
+        prep_value = _extract_labeled_metadata_value(bounded_line, _PASTED_PREP_LABELS)
+        if prep_value:
+            prep_time = prep_value
             continue
-        cook_match = re.match(r"^cook(?:ing)?\s*time\s*[:\-]\s*(.+)$", bounded_line, flags=re.IGNORECASE)
-        if cook_match:
-            cook_time = _clean_text(cook_match.group(1))
+        cook_value = _extract_labeled_metadata_value(bounded_line, _PASTED_COOK_LABELS)
+        if cook_value:
+            cook_time = cook_value
             continue
-        total_match = re.match(r"^total\s*time\s*[:\-]\s*(.+)$", bounded_line, flags=re.IGNORECASE)
-        if total_match:
-            total_time = _clean_text(total_match.group(1))
+        total_value = _extract_labeled_metadata_value(bounded_line, _PASTED_TOTAL_LABELS)
+        if total_value:
+            total_time = total_value
             continue
 
         if not title and not current_section:
@@ -7197,25 +7356,19 @@ def normalize_ai_review_response(payload: dict) -> dict:
         isinstance(group, dict) for group in raw_ingredient_groups
     )
     logger.info("ai_cleanup_items_before_normalize=%s", raw_ingredient_groups)
-    if has_grouped_ingredients:
-        ingredient_groups = raw_ingredient_groups
-    else:
-        ingredient_groups = _normalize_group_items(raw_ingredient_groups, "items")
+    ingredient_groups = _normalize_group_items(raw_ingredient_groups, "items")
     if not ingredient_groups and not has_grouped_ingredients:
         fallback_ingredients = _normalize_plain_string_list(payload.get("ingredients") or [])
         ingredient_groups = [{"title": "", "items": fallback_ingredients}] if fallback_ingredients else []
     logger.info("ai_cleanup_items_after_normalize=%s", ingredient_groups)
     logger.info("ai_cleanup_items_before_merge=%s", ingredient_groups)
-    if has_grouped_ingredients:
-        ingredient_groups_after_merge = ingredient_groups
-    else:
-        ingredient_groups_after_merge = [
-            {
-                "title": group.get("title", ""),
-                "items": _merge_split_ingredient_lines(group.get("items", [])),
-            }
-            for group in ingredient_groups
-        ]
+    ingredient_groups_after_merge = [
+        {
+            "title": group.get("title", ""),
+            "items": _merge_split_ingredient_lines(group.get("items", [])),
+        }
+        for group in ingredient_groups
+    ]
     logger.info("ai_cleanup_items_after_merge=%s", ingredient_groups_after_merge)
     ingredient_groups = _filter_ai_ingredient_groups(ingredient_groups_after_merge)
 
