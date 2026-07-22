@@ -544,6 +544,24 @@ def test_split_instruction_sentences_rewrites_colon_after_smooth_transition():
     ]
 
 
+def test_split_instruction_sentences_handles_long_ocr_heading_runs_quickly():
+    repeated_space = " " * 4000
+    ocr_text = (
+        f"Beat until smooth{repeated_space}Filling:{repeated_space}Spoon into pan"
+        f"{repeated_space}If you don't have a piping bag pipe by spoonfuls"
+    )
+
+    started = time.perf_counter()
+    steps = main._split_instruction_sentences(ocr_text)
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert steps == [
+        "Filling: Spoon into pan.",
+        "If you don't have a piping bag pipe by spoonfuls.",
+    ]
+
+
 def test_parse_social_caption_recipe_for_ocr_prefers_uppercase_food_title_line_even_with_noisy_title_hint():
     ocr_text = "Suackiw' Buack Cakes TOPSY-TURVY BANANA CRUNCH CAKE"
 

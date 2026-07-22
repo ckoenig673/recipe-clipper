@@ -122,6 +122,18 @@ def test_facebook_cookie_test_statuses(monkeypatch):
             main.DB = original_db
 
 
+def test_facebook_cookie_domain_checks_use_parsed_hostname_validation():
+    assert main._looks_like_facebook_cookie_value(".facebook.com\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+    assert main._looks_like_facebook_cookie_value("FACEBOOK.COM.\tTRUE\t/\tTRUE\t0\txs\tabc")
+    assert not main._looks_like_facebook_cookie_value("facebook.com.attacker.test\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+    assert not main._looks_like_facebook_cookie_value("facebook.com@evil.example\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+
+    assert main._is_raw_facebook_cookie_blob(".facebook.com\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+    assert main._is_raw_facebook_cookie_blob("FACEBOOK.COM.\tTRUE\t/\tTRUE\t0\txs\tabc")
+    assert not main._is_raw_facebook_cookie_blob("facebook.com.attacker.test\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+    assert not main._is_raw_facebook_cookie_blob("facebook.com@evil.example\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+
+
 def test_unreadable_facebook_cookie_reports_recovery_state_and_can_be_replaced_or_cleared(monkeypatch):
     with tempfile.TemporaryDirectory() as tmp_dir:
         original_db = main.DB

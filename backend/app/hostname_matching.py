@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 
 def normalize_hostname(hostname: str | None) -> str:
-    return (hostname or "").strip().rstrip(".").lower()
+    return (hostname or "").strip().lstrip(".").rstrip(".").lower()
 
 
 def hostname_matches_domain(hostname: str | None, expected_domain: str) -> bool:

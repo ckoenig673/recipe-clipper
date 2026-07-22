@@ -1,5 +1,6 @@
 import json
 import tempfile
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -690,6 +691,24 @@ def test_build_transcript_cleanup_prompt_includes_conservative_editor_rules():
     assert '"source_url": "https://www.facebook.com/reel/1234567890123456"' in prompt
 
 
+def test_build_transcript_cleanup_prompt_handles_long_saved_transcript_text_quickly():
+    repeated_text = ("Two and a fourth teaspoons of baking powder. " * 800).strip()
+
+    started = time.perf_counter()
+    prompt = main._build_transcript_cleanup_prompt(
+        {
+            "title": "Transcript Cleanup",
+            "ingredient_groups": [{"title": "", "items": ["2.25 teaspoons baking powder"]}],
+            "instruction_groups": [{"title": "Instructions", "steps": ["Mix gently."]}],
+            "_ai_cleanup_context": {"cleaned_transcript_text": repeated_text},
+        }
+    )
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert '"saved_transcript_text": "Two and a fourth teaspoons of baking powder.' in prompt
+
+
 def test_ai_cleanup_has_meaningful_changes_ignores_capitalization_only_differences():
     current = {
         "title": "weeknight biscuits",
@@ -1160,6 +1179,29 @@ def test_modal_preview_payload_from_parsed_ai_json_supports_amount_and_weight_in
     assert preview["ingredients"] == ["1/3 cup light mayonnaise 90g"]
 
 
+def test_modal_preview_payload_from_parsed_ai_json_keeps_big_mac_bowls_fraction_amounts_bounded():
+    repeated_space = " " * 4000
+    parsed_json = {
+        "title": "Big Mac Bowls",
+        "ingredients": [
+            {"amount": f"1/3{repeated_space}cup", "item": "light mayonnaise"},
+            {"amount": f"1{repeated_space}lb", "item": "lean ground beef"},
+        ],
+        "instructions": ["Mix ingredients."],
+    }
+
+    started = time.perf_counter()
+    preview = main._modal_preview_payload_from_parsed_ai_json(parsed_json, parsed_recipe={})
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert preview["title"] == "Big Mac Bowls"
+    assert preview["ingredients"] == ["1/3 cup light mayonnaise", "1 lb lean ground beef"]
+    assert preview["ingredient_groups"] == [
+        {"title": "", "items": ["1/3 cup light mayonnaise", "1 lb lean ground beef"]},
+    ]
+
+
 def test_modal_preview_payload_from_parsed_ai_json_normalizes_spoken_quantities():
     parsed_json = {
         "title": "Biscuits",
@@ -1195,6 +1237,29 @@ def test_modal_preview_payload_from_parsed_ai_json_normalizes_spoken_quantities(
         "0.5 teaspoon baking soda",
         "0.25 cup buttermilk",
         "1.5 sticks butter",
+    ]
+
+
+def test_modal_preview_payload_from_parsed_ai_json_keeps_optavia_fraction_amounts_bounded():
+    repeated_space = " " * 4000
+    parsed_json = {
+        "title": "OPTAVIA Mini Mac In A Bowl",
+        "ingredients": [
+            {"amount": f"1/4{repeated_space}cup", "item": "diced dill pickles"},
+            {"amount": f"1/2{repeated_space}cup", "item": "shredded lettuce"},
+        ],
+        "instructions": ["Cook beef."],
+    }
+
+    started = time.perf_counter()
+    preview = main._modal_preview_payload_from_parsed_ai_json(parsed_json, parsed_recipe={})
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert preview["title"] == "OPTAVIA Mini Mac In A Bowl"
+    assert preview["ingredients"] == ["1/4 cup diced dill pickles", "1/2 cup shredded lettuce"]
+    assert preview["ingredient_groups"] == [
+        {"title": "", "items": ["1/4 cup diced dill pickles", "1/2 cup shredded lettuce"]},
     ]
 
 

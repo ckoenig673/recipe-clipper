@@ -1,0 +1,8 @@
+name: Recipe Clipper CodeQL config
+
+# The HTML files under backend/tests/fixtures are inert captured recipe pages
+# used as parser regression inputs. They are not served by the app, bundled into
+# the frontend, or executed by tests in a browser context, so exclude only that
+# directory while keeping application and test source code in scope.
+paths-ignore:
+  - backend/tests/fixtures/**

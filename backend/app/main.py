@@ -1429,10 +1429,10 @@ def normalize_shared_url(url: str) -> str:
 
     try:
         parsed = urlparse(url)
-        host = parsed.netloc.lower()
+        host = parse_hostname(url)
         query = parse_qs(parsed.query)
 
-        if "facebook.com" in host:
+        if hostname_matches_any(host, ("facebook.com",)):
             if "u" in query and query["u"]:
                 return unquote(query["u"][0]).strip()
             if "href" in query and query["href"]:
@@ -1612,6 +1612,114 @@ def _strip_social_caption_noise(text: str) -> str:
     return cleaned
 
 
+def _contains_space_delimited_word(value: str, expected: str) -> bool:
+    for token in value.split():
+        if token.strip(".,;:!?").lower() == expected:
+            return True
+    return False
+
+
+def _rewrite_missing_with_instruction_clause(value: str, transformer) -> str:
+    rebuilt: list[str] = []
+    segment_start = 0
+    for index, char in enumerate(value):
+        if char not in ".!?":
+            continue
+        rebuilt.append(_rewrite_missing_with_instruction_segment(value[segment_start:index], transformer))
+        rebuilt.append(char)
+        segment_start = index + 1
+    rebuilt.append(_rewrite_missing_with_instruction_segment(value[segment_start:], transformer))
+    return "".join(rebuilt)
+
+
+def _rewrite_missing_with_instruction_segment(segment: str, transformer) -> str:
+    marker = "; with "
+    leading_length = len(segment) - len(segment.lstrip())
+    leading = segment[:leading_length]
+    body = segment[leading_length:]
+    lowered = body.lower()
+    if not lowered.startswith(("spoon ", "add ", "pour ")):
+        return segment
+    marker_index = lowered.find(marker)
+    if marker_index < 0:
+        return segment
+    action = body[:marker_index].strip()
+    clause = body[marker_index + len(marker):].strip()
+    if not action or not clause:
+        return segment
+    return f"{leading}{transformer(action, clause, body)}"
+
+
+def _trim_output_whitespace(chars: list[str]) -> None:
+    while chars and chars[-1].isspace():
+        chars.pop()
+
+
+def _append_sentence_break(chars: list[str]) -> None:
+    _trim_output_whitespace(chars)
+    if chars and chars[-1] not in ".!?:\n":
+        chars.extend(". ")
+
+
+def _insert_sentence_break_before_labels(value: str, labels: tuple[str, ...]) -> str:
+    lowered = value.lower()
+    ordered_labels = tuple(sorted(labels, key=len, reverse=True))
+    rebuilt: list[str] = []
+    index = 0
+    while index < len(value):
+        matched_label = None
+        for label in ordered_labels:
+            if not lowered.startswith(label.lower(), index):
+                continue
+            colon_index = index + len(label)
+            while colon_index < len(value) and value[colon_index].isspace():
+                colon_index += 1
+            if (
+                index > 0
+                and value[index - 1].isspace()
+                and colon_index < len(value)
+                and value[colon_index] == ":"
+            ):
+                matched_label = label
+                break
+        if matched_label is None:
+            rebuilt.append(value[index])
+            index += 1
+            continue
+        _append_sentence_break(rebuilt)
+        rebuilt.append(value[index:index + len(matched_label)])
+        index += len(matched_label)
+    return "".join(rebuilt)
+
+
+def _insert_sentence_break_before_phrases(value: str, phrases: tuple[str, ...]) -> str:
+    lowered = value.lower()
+    ordered_phrases = tuple(sorted(phrases, key=len, reverse=True))
+    rebuilt: list[str] = []
+    index = 0
+    while index < len(value):
+        matched_phrase = None
+        for phrase in ordered_phrases:
+            phrase_lower = phrase.lower()
+            phrase_end = index + len(phrase)
+            if not lowered.startswith(phrase_lower, index):
+                continue
+            if index == 0 or not value[index - 1].isspace():
+                continue
+            if phrase_end < len(value) and value[phrase_end].isalpha():
+                continue
+            matched_phrase = phrase
+            break
+        if matched_phrase is None:
+            rebuilt.append(value[index])
+            index += 1
+            continue
+        _append_sentence_break(rebuilt)
+        rebuilt.append(value[index:index + len(matched_phrase)])
+        index += len(matched_phrase)
+    return "".join(rebuilt)
+
+
 def _split_instruction_sentences(text: str) -> list[str]:
     value = _clean_text(text)[:MAX_REGEX_TEXT_CHARS]
     if not value:
@@ -1629,24 +1737,25 @@ def _split_instruction_sentences(text: str) -> list[str]:
         flags=re.IGNORECASE,
     )
 
-    def _recover_missing_with_clause(match: re.Match[str]) -> str:
-        clause = match.group("clause").strip()
+    def _recover_missing_with_clause(action: str, clause: str, original: str) -> str:
         clause_lower = clause.lower()
-        if "sprinkle" in clause_lower or re.search(r"\btop\b", clause_lower):
-            return match.group(0)
+        if "sprinkle" in clause_lower or _contains_space_delimited_word(clause_lower, "top"):
+            return original
         if "oat topping" not in clause_lower and "topping" not in clause_lower:
-            return match.group(0)
-        return f"{match.group('action')}; sprinkle with {clause}"
+            return original
+        return f"{action}; sprinkle with {clause}"
 
-    value = re.sub(
-        r"(?P<action>\b(?:Spoon|Add|Pour)\b[^.;!?]*?)\s*;\s*with\s+(?P<clause>[^.;!?]+)",
-        _recover_missing_with_clause,
-        value,
-        flags=re.IGNORECASE,
-    )
+    # OCR imports sometimes merge a trailing "; with ..." clause into a Spoon/Add/Pour step.
+    # Keep the clause when it clearly describes a topping instruction, but recover a missing verb
+    # without backtracking across large untrusted transcript or OCR payloads.
+    value = _rewrite_missing_with_instruction_clause(value, _recover_missing_with_clause)
     value = re.sub(r"\bc\.\s*(\d)", r"c \1", value, flags=re.IGNORECASE)
-    value = re.sub(r"\s*(\b(?:Filling|Mash|To Finish)\s*:)", r". \1", value, flags=re.IGNORECASE)
-    value = re.sub(r"\s+(In a casserole pot|If you don[’']t have a piping bag)\b", r". \1", value, flags=re.IGNORECASE)
+    # OCR imports also collapse section-like labels and recovery phrases into the previous sentence.
+    value = _insert_sentence_break_before_labels(value, ("Filling", "Mash", "To Finish"))
+    value = _insert_sentence_break_before_phrases(
+        value,
+        ("In a casserole pot", "If you don’t have a piping bag", "If you don't have a piping bag"),
+    )
     value = re.sub(r"\b(Season to taste)\s+(?=[A-Z])", r"\1. ", value, flags=re.IGNORECASE)
     value = re.sub(r"\b(smooth|blended|clean)\s*:\s*", r"\1. ", value, flags=re.IGNORECASE)
     value = re.sub(r"until smooth;\s*Spoon\b", "until smooth. Spoon", value, flags=re.IGNORECASE)
@@ -1950,13 +2059,24 @@ def _extract_labeled_metadata_value(value: str, labels: tuple[str, ...]) -> str 
     return None
 
 
+def _trim_trailing_ingredient_joiners(value: str) -> str:
+    trimmed = value.rstrip()
+    if trimmed.endswith("&"):
+        return trimmed[:-1].rstrip()
+    if trimmed.lower().endswith("and"):
+        start = len(trimmed) - 3
+        if start == 0 or trimmed[start - 1].isspace():
+            return trimmed[:start].rstrip()
+    return trimmed
+
+
 def _clean_ingredient_candidate(text: str) -> str:
     cleaned = _clean_text(text).strip(" -•*")
     cleaned = re.sub(r"^(?:add|mix in|stir in|top with)\s+", "", cleaned, flags=re.IGNORECASE)
     for pattern in INGREDIENT_TAIL_PATTERNS:
         cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\s*(?:&|and)\s*$", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"[\s,.;:]+$", "", cleaned)
+    cleaned = _trim_trailing_ingredient_joiners(cleaned)
+    cleaned = cleaned.rstrip(" ,.;:")
     return cleaned
 
 
@@ -3063,9 +3183,32 @@ def _is_recipe_type(value) -> bool:
     return False
 
 
+def _strip_balanced_html_tags(value: str) -> str:
+    result: list[str] = []
+    tag_buffer: list[str] = []
+    in_tag = False
+    for char in value:
+        if in_tag:
+            tag_buffer.append(char)
+            if char == ">":
+                result.append(" ")
+                tag_buffer = []
+                in_tag = False
+            continue
+        if char == "<":
+            tag_buffer = ["<"]
+            in_tag = True
+            continue
+        result.append(char)
+    if in_tag and tag_buffer:
+        result.extend(tag_buffer)
+    return "".join(result)
+
+
 def _clean_text(value: str) -> str:
     text = unescape(str(value or ""))
-    text = re.sub(r"<[^>]+>", " ", text)
+    # HTML imports include balanced tags, but malformed unmatched "<" text should remain visible.
+    text = _strip_balanced_html_tags(text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
@@ -3079,15 +3222,39 @@ def _extract_minutes_from_text(value: str) -> int | None:
     if not text:
         return None
 
-    hour_match = re.search(r"(\d+)\s*(?:h|hr|hrs|hour|hours)\b", text)
-    min_match = re.search(r"(\d+)\s*(?:m|min|mins|minute|minutes)\b", text)
-
-    if not hour_match and not min_match:
+    # Parse plain-text duration snippets linearly so oversized pasted metadata stays bounded.
+    duration_parts = _scan_duration_components(text)
+    if not duration_parts:
         return None
 
-    hours = int(hour_match.group(1)) if hour_match else 0
-    minutes = int(min_match.group(1)) if min_match else 0
+    hours = duration_parts.get("hours", 0)
+    minutes = duration_parts.get("minutes", 0)
     return (hours * 60) + minutes
+
+
+def _scan_duration_components(value: str) -> dict[str, int]:
+    parts: dict[str, int] = {}
+    index = 0
+    while index < len(value):
+        if not value[index].isdigit():
+            index += 1
+            continue
+        number_start = index
+        while index < len(value) and value[index].isdigit():
+            index += 1
+        amount = int(value[number_start:index])
+        while index < len(value) and value[index].isspace():
+            index += 1
+        unit_start = index
+        while index < len(value) and value[index].isalpha():
+            index += 1
+        unit = value[unit_start:index]
+        if unit.startswith(("h", "hr", "hrs", "hour", "hours")) and "hours" not in parts:
+            parts["hours"] = amount
+            continue
+        if unit.startswith(("m", "min", "mins", "minute", "minutes")) and "minutes" not in parts:
+            parts["minutes"] = amount
+    return parts
 
 
 def _format_duration(minutes: int) -> str:
@@ -3705,15 +3872,7 @@ def _parse_ingredient_struct(text: str) -> dict:
         parsed.update(_build_ingredient_display_fields(parsed))
         return parsed
 
-    working = raw
-    notes: list[str] = []
-    for note_match in re.finditer(r"\(([^)]*)\)", working):
-        note_text = _clean_text(note_match.group(1))
-        if note_text:
-            notes.append(note_text)
-    if notes:
-        working = re.sub(r"\([^)]*\)", " ", working)
-    working = re.sub(r"\s+", " ", working).strip()
+    working, notes = _extract_parenthetical_notes(raw)
 
     quantity, remainder = _parse_ingredient_quantity(working)
 
@@ -6185,18 +6344,6 @@ def _ai_cleanup_requested_no_changes(parsed_json: dict) -> bool:
     return bool(parsed_json.get("no_changes") is True or parsed_json.get("no_change") is True)
 
 
-def _looks_like_ingredient_quantity(value: str) -> bool:
-    candidate = _clean_text(value)
-    if not candidate:
-        return False
-    return bool(
-        re.fullmatch(
-            r"(?:\d+(?:\.\d+)?|\d+\s+\d+/\d+|\d+/\d+|[¼½¾⅐-⅞])",
-            candidate,
-        )
-    )
-
-
 def _looks_like_ingredient_unit(value: str) -> bool:
     candidate = _clean_text(value).lower().rstrip(".")
     if not candidate:
@@ -8378,7 +8525,10 @@ def _looks_like_facebook_cookie_value(value: str) -> bool:
     if "c_user=" in normalized or "xs=" in normalized:
         return True
     for line in normalized.splitlines():
-        if "\t" in line and "facebook.com" in line:
+        if "\t" not in line:
+            continue
+        host = line.split("\t", 1)[0]
+        if hostname_matches_any(host, ("facebook.com",)):
             return True
     return False
 
@@ -8390,8 +8540,12 @@ def _is_raw_facebook_cookie_blob(value: str) -> bool:
     lowered = normalized.lower()
     if "netscape http cookie file" in lowered:
         return True
-    if "\t" in normalized and "facebook.com" in lowered:
-        return True
+    for line in normalized.splitlines():
+        if "\t" not in line:
+            continue
+        host = line.split("\t", 1)[0]
+        if hostname_matches_any(host, ("facebook.com",)):
+            return True
     return bool(re.search(r"[\r\n]+", normalized))
 
 
@@ -9679,7 +9833,7 @@ def put_recipe_state(
 
 
 @app.get("/extract-metadata")
-def extract_metadata(url: str = Query(...), current_user: dict = Depends(require_user), _: dict | None = None):
+def extract_metadata(request: Request, url: str = Query(...), current_user: dict = Depends(require_user), _: dict | None = None):
     if not isinstance(current_user, dict):
         current_user = {}
     if not current_user and _:
@@ -10145,10 +10299,14 @@ def extract_metadata(url: str = Query(...), current_user: dict = Depends(require
     except PublicUrlValidationError as exc:
         raise HTTPException(status_code=422, detail=USER_FACING_PUBLIC_URL_ERROR) from exc
     except Exception as exc:
+        correlation_id = _request_correlation_id(request)
         logger.exception(
-            "extract-metadata failed raw_url=%s is_social=%s error=%s",
+            "extract-metadata failed path=%s raw_url=%s is_social=%s correlation_id=%s error_type=%s error=%s",
+            request.url.path,
             raw_url,
             is_social,
+            correlation_id,
+            type(exc).__name__,
             str(exc),
         )
         if is_social:
