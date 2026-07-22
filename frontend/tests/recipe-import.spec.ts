@@ -4,6 +4,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { cleanupRecipesAddedSince, fetchRecipeIds } from './e2e-recipe-cleanup';
 
 const LOGIN_EMAIL = process.env.E2E_EMAIL;
 const LOGIN_PASSWORD = process.env.E2E_PASSWORD;
@@ -115,6 +116,18 @@ async function waitForAiCleanupComplete(page: Page) {
     timeout: 240_000,
   });
 }
+
+let baselineRecipeIds = new Set<number>();
+
+test.beforeEach(async ({ page }) => {
+  await openFreshApp(page);
+  await maybeLogin(page);
+  baselineRecipeIds = await fetchRecipeIds(page);
+});
+
+test.afterEach(async ({ page }, testInfo) => {
+  await cleanupRecipesAddedSince(page, baselineRecipeIds, `recipe-import:${testInfo.title}`);
+});
 
 test('Big Mac Bowls import + AI cleanup + save closes modal', async ({ page }) => {
   await importByUrl(page, 'https://ohsnapmacros.com/big-mac-bowls/');

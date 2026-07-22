@@ -68,8 +68,176 @@
     }
   ],
   "image_url": "https://www.thecountrycook.net/wp-content/uploads/2025/12/thumbnail-Crock-Pot-Beef-Stroganoff.jpg",
+  "ingredients_structured": [
+    {
+      "raw": "2 pounds beef stew meat ( (or chuck roast, cut into chunks))",
+      "quantity": 2.0,
+      "unit": null,
+      "name": "pounds beef stew meat",
+      "note": "(or chuck roast, cut into chunks)",
+      "display_quantity": "2",
+      "display_unit": null,
+      "display_name": "pounds beef stew meat",
+      "display_text": "2 pounds beef stew meat ((or chuck roast, cut into chunks))"
+    },
+    {
+      "raw": "1 small yellow onion, sliced",
+      "quantity": 1.0,
+      "unit": null,
+      "name": "small yellow onion, sliced",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": null,
+      "display_name": "small yellow onion, sliced",
+      "display_text": "1 small yellow onion, sliced"
+    },
+    {
+      "raw": "2 cups sliced mushrooms ((optional))",
+      "quantity": 2.0,
+      "unit": "cup",
+      "name": "sliced mushrooms",
+      "note": "(optional)",
+      "display_quantity": "2",
+      "display_unit": "cups",
+      "display_name": "sliced mushrooms",
+      "display_text": "2 cups sliced mushrooms ((optional))"
+    },
+    {
+      "raw": "2 cloves garlic, minced",
+      "quantity": 2.0,
+      "unit": null,
+      "name": "cloves garlic, minced",
+      "note": null,
+      "display_quantity": "2",
+      "display_unit": null,
+      "display_name": "cloves garlic, minced",
+      "display_text": "2 cloves garlic, minced"
+    },
+    {
+      "raw": "10.5 ounces cream of mushroom soup",
+      "quantity": 10.5,
+      "unit": "ounce",
+      "name": "cream of mushroom soup",
+      "note": null,
+      "display_quantity": "10 1/2",
+      "display_unit": "ounces",
+      "display_name": "cream of mushroom soup",
+      "display_text": "10 1/2 ounces cream of mushroom soup"
+    },
+    {
+      "raw": "1 cup beef broth ((can use low or no sodium))",
+      "quantity": 1.0,
+      "unit": "cup",
+      "name": "beef broth",
+      "note": "(can use low or no sodium)",
+      "display_quantity": "1",
+      "display_unit": "cup",
+      "display_name": "beef broth",
+      "display_text": "1 cup beef broth ((can use low or no sodium))"
+    },
+    {
+      "raw": "1 Tablespoon Worcestershire sauce",
+      "quantity": 1.0,
+      "unit": "tablespoon",
+      "name": "Worcestershire sauce",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "tablespoon",
+      "display_name": "Worcestershire sauce",
+      "display_text": "1 tablespoon Worcestershire sauce"
+    },
+    {
+      "raw": "1 teaspoon Dijon mustard",
+      "quantity": 1.0,
+      "unit": "teaspoon",
+      "name": "Dijon mustard",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "teaspoon",
+      "display_name": "Dijon mustard",
+      "display_text": "1 teaspoon Dijon mustard"
+    },
+    {
+      "raw": "1 teaspoon paprika",
+      "quantity": 1.0,
+      "unit": "teaspoon",
+      "name": "paprika",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "teaspoon",
+      "display_name": "paprika",
+      "display_text": "1 teaspoon paprika"
+    },
+    {
+      "raw": "½ teaspoon salt",
+      "quantity": 0.5,
+      "unit": "teaspoon",
+      "name": "salt",
+      "note": null,
+      "display_quantity": "1/2",
+      "display_unit": "teaspoon",
+      "display_name": "salt",
+      "display_text": "1/2 teaspoon salt"
+    },
+    {
+      "raw": "½ teaspoon black pepper",
+      "quantity": 0.5,
+      "unit": "teaspoon",
+      "name": "black pepper",
+      "note": null,
+      "display_quantity": "1/2",
+      "display_unit": "teaspoon",
+      "display_name": "black pepper",
+      "display_text": "1/2 teaspoon black pepper"
+    },
+    {
+      "raw": "8 ounce block cream cheese, softened and cubed",
+      "quantity": 8.0,
+      "unit": "ounce",
+      "name": "block cream cheese, softened and cubed",
+      "note": null,
+      "display_quantity": "8",
+      "display_unit": "ounces",
+      "display_name": "block cream cheese, softened and cubed",
+      "display_text": "8 ounces block cream cheese, softened and cubed"
+    },
+    {
+      "raw": "1 cup sour cream",
+      "quantity": 1.0,
+      "unit": "cup",
+      "name": "sour cream",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "cup",
+      "display_name": "sour cream",
+      "display_text": "1 cup sour cream"
+    },
+    {
+      "raw": "12 ounce bag wide egg noodles, cooked and drained",
+      "quantity": 12.0,
+      "unit": "ounce",
+      "name": "bag wide egg noodles, cooked and drained",
+      "note": null,
+      "display_quantity": "12",
+      "display_unit": "ounces",
+      "display_name": "bag wide egg noodles, cooked and drained",
+      "display_text": "12 ounces bag wide egg noodles, cooked and drained"
+    },
+    {
+      "raw": "fresh parsley, chopped ((optional, for serving))",
+      "quantity": null,
+      "unit": null,
+      "name": "fresh parsley, chopped",
+      "note": "(optional, for serving)",
+      "display_quantity": null,
+      "display_unit": null,
+      "display_name": "fresh parsley, chopped",
+      "display_text": "fresh parsley, chopped ((optional, for serving))"
+    }
+  ],
   "_selected_source": "jsonld",
   "_selected_reason": "jsonld-default",
+  "_instruction_groups_source": "jsonld",
   "_parser_counts": {
     "jsonld": {
       "ingredients": 15,
@@ -167,12 +335,12 @@
       "image_url": "https://www.thecountrycook.net/wp-content/uploads/2025/12/thumbnail-Crock-Pot-Beef-Stroganoff.jpg",
       "ingredient_groups": [],
       "instruction_groups": [],
-      "prep_time": "15 minutes minutes",
-      "cook_time": "8 hours hours",
-      "total_time": "8 hours hours 15 minutes minutes Serving",
-      "prep_minutes": 15,
-      "cook_minutes": 480,
-      "total_minutes": 495
+      "prep_time": "",
+      "cook_time": "",
+      "total_time": "",
+      "prep_minutes": null,
+      "cook_minutes": null,
+      "total_minutes": null
     },
     "wprm": {
       "title": "Crock Pot Beef Stroganoff",

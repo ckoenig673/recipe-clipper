@@ -52,8 +52,99 @@
     }
   ],
   "image_url": "https://www.thecookierookie.com/wp-content/uploads/2021/04/featured-cucumber-sandwiches-recipe.jpg",
+  "ingredients_structured": [
+    {
+      "raw": "4 oz. cream cheese (at room temperature)",
+      "quantity": 4.0,
+      "unit": "ounce",
+      "name": ". cream cheese",
+      "note": "at room temperature",
+      "display_quantity": "4",
+      "display_unit": "ounces",
+      "display_name": ". cream cheese",
+      "display_text": "4 ounces . cream cheese (at room temperature)"
+    },
+    {
+      "raw": "¼ cup mayonnaise",
+      "quantity": 0.25,
+      "unit": "cup",
+      "name": "mayonnaise",
+      "note": null,
+      "display_quantity": "1/4",
+      "display_unit": "cup",
+      "display_name": "mayonnaise",
+      "display_text": "1/4 cup mayonnaise"
+    },
+    {
+      "raw": "1 tsp garlic powder",
+      "quantity": 1.0,
+      "unit": "teaspoon",
+      "name": "garlic powder",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "teaspoon",
+      "display_name": "garlic powder",
+      "display_text": "1 teaspoon garlic powder"
+    },
+    {
+      "raw": "1 tsp dried dill weed",
+      "quantity": 1.0,
+      "unit": "teaspoon",
+      "name": "dried dill weed",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "teaspoon",
+      "display_name": "dried dill weed",
+      "display_text": "1 teaspoon dried dill weed"
+    },
+    {
+      "raw": "½ tsp ground black pepper",
+      "quantity": 0.5,
+      "unit": "teaspoon",
+      "name": "ground black pepper",
+      "note": null,
+      "display_quantity": "1/2",
+      "display_unit": "teaspoon",
+      "display_name": "ground black pepper",
+      "display_text": "1/2 teaspoon ground black pepper"
+    },
+    {
+      "raw": "pinch of salt",
+      "quantity": null,
+      "unit": null,
+      "name": "pinch of salt",
+      "note": null,
+      "display_quantity": null,
+      "display_unit": null,
+      "display_name": "pinch of salt",
+      "display_text": "pinch of salt"
+    },
+    {
+      "raw": "10-12 slices white bread",
+      "quantity": 10.0,
+      "unit": null,
+      "name": "-12 slices white bread",
+      "note": null,
+      "display_quantity": "10",
+      "display_unit": null,
+      "display_name": "-12 slices white bread",
+      "display_text": "10 -12 slices white bread"
+    },
+    {
+      "raw": "1 English cucumber (about 36-54 slices, sliced)",
+      "quantity": 1.0,
+      "unit": null,
+      "name": "English cucumber",
+      "note": "about 36-54 slices, sliced",
+      "display_quantity": "1",
+      "display_unit": null,
+      "display_name": "English cucumber",
+      "display_text": "1 English cucumber (about 36-54 slices, sliced)"
+    }
+  ],
   "_selected_source": "jsonld",
   "_selected_reason": "jsonld-default",
+  "_instruction_groups_source": "jsonld",
   "_parser_counts": {
     "jsonld": {
       "ingredients": 8,
@@ -62,15 +153,15 @@
       "instruction_groups": 1
     },
     "dom": {
-      "ingredients": 8,
+      "ingredients": 0,
       "instructions": 0,
-      "ingredient_groups": 1,
+      "ingredient_groups": 0,
       "instruction_groups": 0
     },
     "wprm": {
-      "ingredients": 8,
+      "ingredients": 0,
       "instructions": 0,
-      "ingredient_groups": 1,
+      "ingredient_groups": 0,
       "instruction_groups": 0
     }
   },
@@ -130,33 +221,10 @@
       ]
     },
     "dom": {
-      "ingredients": [
-        "▢ 4 oz. cream cheese at room temperature",
-        "▢ ¼ cup mayonnaise",
-        "▢ 1 tsp garlic powder",
-        "▢ 1 tsp dried dill weed",
-        "▢ ½ tsp ground black pepper",
-        "▢ pinch of salt",
-        "▢ 10-12 slices white bread",
-        "▢ 1 English cucumber about 36-54 slices, sliced"
-      ],
+      "ingredients": [],
       "instructions": [],
       "image_url": "https://www.thecookierookie.com/wp-content/uploads/2021/04/featured-cucumber-sandwiches-recipe.jpg",
-      "ingredient_groups": [
-        {
-          "title": "",
-          "items": [
-            "▢ 4 oz. cream cheese at room temperature",
-            "▢ ¼ cup mayonnaise",
-            "▢ 1 tsp garlic powder",
-            "▢ 1 tsp dried dill weed",
-            "▢ ½ tsp ground black pepper",
-            "▢ pinch of salt",
-            "▢ 10-12 slices white bread",
-            "▢ 1 English cucumber about 36-54 slices, sliced"
-          ]
-        }
-      ],
+      "ingredient_groups": [],
       "instruction_groups": [],
       "prep_time": "",
       "cook_time": "",
@@ -167,33 +235,10 @@
     },
     "wprm": {
       "title": "Cucumber Sandwiches Recipe",
-      "ingredients": [
-        "▢ 4 oz. cream cheese at room temperature",
-        "▢ ¼ cup mayonnaise",
-        "▢ 1 tsp garlic powder",
-        "▢ 1 tsp dried dill weed",
-        "▢ ½ tsp ground black pepper",
-        "▢ pinch of salt",
-        "▢ 10-12 slices white bread",
-        "▢ 1 English cucumber about 36-54 slices, sliced"
-      ],
+      "ingredients": [],
       "instructions": [],
       "image_url": "https://www.thecookierookie.com/wp-content/uploads/2021/04/featured-cucumber-sandwiches-recipe.jpg",
-      "ingredient_groups": [
-        {
-          "title": "",
-          "items": [
-            "▢ 4 oz. cream cheese at room temperature",
-            "▢ ¼ cup mayonnaise",
-            "▢ 1 tsp garlic powder",
-            "▢ 1 tsp dried dill weed",
-            "▢ ½ tsp ground black pepper",
-            "▢ pinch of salt",
-            "▢ 10-12 slices white bread",
-            "▢ 1 English cucumber about 36-54 slices, sliced"
-          ]
-        }
-      ],
+      "ingredient_groups": [],
       "instruction_groups": [],
       "servings": "6, 6 people",
       "prep_time": "20 minutes",

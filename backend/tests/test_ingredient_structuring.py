@@ -9,6 +9,7 @@ from backend.app.main import (
     _scale_ingredients_list,
     _sum_quantities_for_same_unit,
 )
+import time
 
 
 def test_parse_ingredient_struct_fraction():
@@ -154,6 +155,20 @@ def test_parse_ingredient_struct_keeps_main_quantity_when_parenthetical_tablespo
     assert parsed["name"] == "butter"
     assert parsed["note"] == "2 tablespoons"
     assert parsed["display_text"] == "1/4 cup butter (2 tablespoons)"
+
+
+def test_parse_ingredient_struct_handles_long_parenthetical_note_quickly():
+    raw = "1 cup sugar (" + ("optional " * 2000) + ")"
+
+    started = time.perf_counter()
+    parsed = _parse_ingredient_struct(raw)
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert parsed["quantity"] == 1.0
+    assert parsed["unit"] == "cup"
+    assert parsed["name"] == "sugar"
+    assert parsed["note"].startswith("optional")
 
 
 def test_normalize_ingredient_name_removes_leading_descriptors():

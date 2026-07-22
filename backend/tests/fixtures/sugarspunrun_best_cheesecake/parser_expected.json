@@ -1,16 +1,16 @@
 {
   "title": "The BEST Cheesecake Recipe",
   "ingredients": [
-    "▢ 1 ½ cups graham cracker crumbs , (170g)",
-    "▢ 2 Tablespoons sugar",
-    "▢ 1 Tablespoon brown sugar , (can substitute white)",
-    "▢ 7 Tablespoons butter , melted",
-    "▢ 32 oz cream cheese² , softened to room temperature (910g)",
-    "▢ 1 cup sugar , (200g)",
-    "▢ ⅔ cups sour cream , (160g)",
-    "▢ 1 ½ teaspoons vanilla extract",
-    "▢ ⅛ teaspoon salt",
-    "▢ 4 large eggs , room temperature, lightly beaten"
+    "1 ½ cups graham cracker crumbs ((170g))",
+    "2 Tablespoons sugar",
+    "1 Tablespoon brown sugar ((can substitute white))",
+    "7 Tablespoons butter (melted)",
+    "32 oz cream cheese² (softened to room temperature (910g))",
+    "1 cup sugar ((200g))",
+    "0.666667 cup sour cream ((160g))",
+    "1 ½ teaspoons vanilla extract",
+    "0.125 teaspoon salt",
+    "4 large eggs (room temperature, lightly beaten)"
   ],
   "instructions": [
     "In the bowl of a stand mixer or in a large bowl (using a hand mixer) add cream cheese and stir until smooth and creamy (don’t over-beat or you’ll incorporate too much air).",
@@ -31,23 +31,18 @@
   "total_minutes": 455,
   "ingredient_groups": [
     {
-      "title": "4.96 from 3472 votes 4.96 from 3472 votes How to make the creamiest, BEST Cheesecake Recipe! Oh, and there's no water bath required! Prep: 20 minutes mins Cook: 1 hour hr 15 minutes mins Cooling Time: 6 hours hrs Total: 7 hours hrs 35 minutes mins Servings: 12 slices Equipment 9\" Springform pan Mixing bowls Save this recipe! Ingredients Graham Cracker Crust¹",
+      "title": "",
       "items": [
-        "▢ 1 ½ cups graham cracker crumbs , (170g)",
-        "▢ 2 Tablespoons sugar",
-        "▢ 1 Tablespoon brown sugar , (can substitute white)",
-        "▢ 7 Tablespoons butter , melted"
-      ]
-    },
-    {
-      "title": "Cheesecake",
-      "items": [
-        "▢ 32 oz cream cheese² , softened to room temperature (910g)",
-        "▢ 1 cup sugar , (200g)",
-        "▢ ⅔ cups sour cream , (160g)",
-        "▢ 1 ½ teaspoons vanilla extract",
-        "▢ ⅛ teaspoon salt",
-        "▢ 4 large eggs , room temperature, lightly beaten"
+        "1 ½ cups graham cracker crumbs ((170g))",
+        "2 Tablespoons sugar",
+        "1 Tablespoon brown sugar ((can substitute white))",
+        "7 Tablespoons butter (melted)",
+        "32 oz cream cheese² (softened to room temperature (910g))",
+        "1 cup sugar ((200g))",
+        "0.666667 cup sour cream ((160g))",
+        "1 ½ teaspoons vanilla extract",
+        "0.125 teaspoon salt",
+        "4 large eggs (room temperature, lightly beaten)"
       ]
     }
   ],
@@ -67,8 +62,121 @@
     }
   ],
   "image_url": "https://sugarspunrun.com/wp-content/uploads/2019/01/Best-Cheesecake-Recipe-2-1-of-1-4.jpg",
+  "ingredients_structured": [
+    {
+      "raw": "1 ½ cups graham cracker crumbs ((170g))",
+      "quantity": 1.5,
+      "unit": "cup",
+      "name": "graham cracker crumbs",
+      "note": "(170g)",
+      "display_quantity": "1 1/2",
+      "display_unit": "cups",
+      "display_name": "graham cracker crumbs",
+      "display_text": "1 1/2 cups graham cracker crumbs ((170g))"
+    },
+    {
+      "raw": "2 Tablespoons sugar",
+      "quantity": 2.0,
+      "unit": "tablespoon",
+      "name": "sugar",
+      "note": null,
+      "display_quantity": "2",
+      "display_unit": "tablespoons",
+      "display_name": "sugar",
+      "display_text": "2 tablespoons sugar"
+    },
+    {
+      "raw": "1 Tablespoon brown sugar ((can substitute white))",
+      "quantity": 1.0,
+      "unit": "tablespoon",
+      "name": "brown sugar",
+      "note": "(can substitute white)",
+      "display_quantity": "1",
+      "display_unit": "tablespoon",
+      "display_name": "brown sugar",
+      "display_text": "1 tablespoon brown sugar ((can substitute white))"
+    },
+    {
+      "raw": "7 Tablespoons butter (melted)",
+      "quantity": 7.0,
+      "unit": "tablespoon",
+      "name": "butter",
+      "note": "melted",
+      "display_quantity": "7",
+      "display_unit": "tablespoons",
+      "display_name": "butter",
+      "display_text": "7 tablespoons butter (melted)"
+    },
+    {
+      "raw": "32 oz cream cheese² (softened to room temperature (910g))",
+      "quantity": 32.0,
+      "unit": "ounce",
+      "name": "cream cheese²",
+      "note": "softened to room temperature (910g)",
+      "display_quantity": "32",
+      "display_unit": "ounces",
+      "display_name": "cream cheese²",
+      "display_text": "32 ounces cream cheese² (softened to room temperature (910g))"
+    },
+    {
+      "raw": "1 cup sugar ((200g))",
+      "quantity": 1.0,
+      "unit": "cup",
+      "name": "sugar",
+      "note": "(200g)",
+      "display_quantity": "1",
+      "display_unit": "cup",
+      "display_name": "sugar",
+      "display_text": "1 cup sugar ((200g))"
+    },
+    {
+      "raw": "0.666667 cup sour cream ((160g))",
+      "quantity": 0.666667,
+      "unit": "cup",
+      "name": "sour cream",
+      "note": "(160g)",
+      "display_quantity": "0.666667",
+      "display_unit": "cup",
+      "display_name": "sour cream",
+      "display_text": "0.666667 cup sour cream ((160g))"
+    },
+    {
+      "raw": "1 ½ teaspoons vanilla extract",
+      "quantity": 1.5,
+      "unit": "teaspoon",
+      "name": "vanilla extract",
+      "note": null,
+      "display_quantity": "1 1/2",
+      "display_unit": "teaspoons",
+      "display_name": "vanilla extract",
+      "display_text": "1 1/2 teaspoons vanilla extract"
+    },
+    {
+      "raw": "0.125 teaspoon salt",
+      "quantity": 0.125,
+      "unit": "teaspoon",
+      "name": "salt",
+      "note": null,
+      "display_quantity": "0.125",
+      "display_unit": "teaspoon",
+      "display_name": "salt",
+      "display_text": "0.125 teaspoon salt"
+    },
+    {
+      "raw": "4 large eggs (room temperature, lightly beaten)",
+      "quantity": 4.0,
+      "unit": null,
+      "name": "large eggs",
+      "note": "room temperature, lightly beaten",
+      "display_quantity": "4",
+      "display_unit": null,
+      "display_name": "large eggs",
+      "display_text": "4 large eggs (room temperature, lightly beaten)"
+    }
+  ],
   "_selected_source": "jsonld",
   "_selected_reason": "jsonld-default",
+  "_instruction_groups_source": "jsonld",
   "_parser_counts": {
     "jsonld": {
       "ingredients": 10,
@@ -78,15 +186,15 @@
     },
     "dom": {
       "ingredients": 10,
-      "instructions": 0,
+      "instructions": 16,
       "ingredient_groups": 2,
-      "instruction_groups": 0
+      "instruction_groups": 2
     },
     "wprm": {
       "ingredients": 10,
-      "instructions": 0,
+      "instructions": 16,
       "ingredient_groups": 2,
-      "instruction_groups": 0
+      "instruction_groups": 2
     }
   },
   "_raw_sources": {
@@ -159,42 +267,86 @@
     },
     "dom": {
       "ingredients": [
-        "▢ 1 ½ cups graham cracker crumbs , (170g)",
+        ", ▢ 1 ½ cups graham cracker crumbs (170g)",
         "▢ 2 Tablespoons sugar",
-        "▢ 1 Tablespoon brown sugar , (can substitute white)",
-        "▢ 7 Tablespoons butter , melted",
-        "▢ 32 oz cream cheese² , softened to room temperature (910g)",
-        "▢ 1 cup sugar , (200g)",
-        "▢ ⅔ cups sour cream , (160g)",
+        ", ▢ 1 Tablespoon brown sugar (can substitute white)",
+        ", ▢ 7 Tablespoons butter melted",
+        ", ▢ 32 oz cream cheese² softened to room temperature (910g)",
+        ", ▢ 1 cup sugar (200g)",
+        ", ▢ ⅔ cups sour cream (160g)",
         "▢ 1 ½ teaspoons vanilla extract",
         "▢ ⅛ teaspoon salt",
-        "▢ 4 large eggs , room temperature, lightly beaten"
+        ", ▢ 4 large eggs room temperature, lightly beaten"
       ],
-      "instructions": [],
+      "instructions": [
+        "Preheat oven to 325F (160C).",
+        "Prepare Graham Cracker crust first by combining graham cracker crumbs, sugar, and brown sugar, and stirring well. Add melted butter and use a fork to combine ingredients well. graham cracker crumbs, 1 ½ cups sugar, 2 Tablespoons brown sugar, 1 Tablespoon butter 7 Tablespoons",
+        "Prepare Graham Cracker crust first by combining graham cracker crumbs, sugar, and brown sugar, and stirring well. Add melted butter and use a fork to combine ingredients well.",
+        "Pour crumbs into a 9” Springform pan and press firmly into the bottom and up the sides of your pan. Set aside.",
+        "In the bowl of a stand mixer or in a large bowl (using a hand mixer) add cream cheese and stir until smooth and creamy (don’t over-beat or you’ll incorporate too much air). cream cheese² 32 oz",
+        "In the bowl of a stand mixer or in a large bowl (using a hand mixer) add cream cheese and stir until smooth and creamy (don’t over-beat or you’ll incorporate too much air).",
+        "Add sugar and stir again until creamy. sugar 1 cup",
+        "Add sugar and stir again until creamy.",
+        "Add sour cream, vanilla extract, and salt, and stir until well-combined. If using a stand mixer, make sure you pause periodically to scrape the sides and bottom of the bowl with a spatula so that all ingredients are evenly incorporated. sour cream, ⅔ cups vanilla extract, 1 ½ teaspoons salt ⅛ teaspoon",
+        "Add sour cream, vanilla extract, and salt, and stir until well-combined. If using a stand mixer, make sure you pause periodically to scrape the sides and bottom of the bowl with a spatula so that all ingredients are evenly incorporated.",
+        "With mixer on low speed, gradually add lightly beaten eggs, one at a time, stirring just until each egg is just incorporated. Once all eggs have been added, use a spatula to scrape the sides and bottom of the bowl again and make sure all ingredients are well combined. large eggs 4",
+        "With mixer on low speed, gradually add lightly beaten eggs, one at a time, stirring just until each egg is just incorporated. Once all eggs have been added, use a spatula to scrape the sides and bottom of the bowl again and make sure all ingredients are well combined.",
+        "Pour cheesecake batter into prepared springform pan. To insure against leaks, place pan on a cookie sheet that’s been lined with foil.",
+        "Transfer to the center rack of your oven and bake on 325F (160C) for 50-60 minutes (or longer as needed, see note 3). Edges will likely have puffed and may have just begun to turn a golden brown and the center should spring back to the touch but will still be Jello-jiggly. Don't over-bake or the texture will suffer, which means we all suffer. slightly light",
+        "Remove from oven and allow to cool on top of the oven⁴ for 10 minutes. Once 10 minutes has passed, use a knife to gently loosen the crust from the inside of the springform pan (this will help prevent cracks as your cheesecake cools and shrinks). Do not remove the ring of the springform pan.",
+        "Allow cheesecake to cool another 1-2 hours or until near room temperature before transferring to refrigerator and allowing to cool overnight or at least 6 hours. I remove the ring of the springform pan just before serving then return it to the pan to store. Enjoy!"
+      ],
       "image_url": "https://sugarspunrun.com/wp-content/uploads/2019/01/Best-Cheesecake-Recipe-2-1-of-1-4.jpg",
       "ingredient_groups": [
         {
-          "title": "4.96 from 3472 votes 4.96 from 3472 votes How to make the creamiest, BEST Cheesecake Recipe! Oh, and there's no water bath required! Prep: 20 minutes mins Cook: 1 hour hr 15 minutes mins Cooling Time: 6 hours hrs Total: 7 hours hrs 35 minutes mins Servings: 12 slices Equipment 9\" Springform pan Mixing bowls Save this recipe! Ingredients Graham Cracker Crust¹",
+          "title": "Graham Cracker Crust¹",
           "items": [
-            "▢ 1 ½ cups graham cracker crumbs , (170g)",
+            ", ▢ 1 ½ cups graham cracker crumbs (170g)",
             "▢ 2 Tablespoons sugar",
-            "▢ 1 Tablespoon brown sugar , (can substitute white)",
-            "▢ 7 Tablespoons butter , melted"
+            ", ▢ 1 Tablespoon brown sugar (can substitute white)",
+            ", ▢ 7 Tablespoons butter melted"
           ]
         },
         {
           "title": "Cheesecake",
           "items": [
-            "▢ 32 oz cream cheese² , softened to room temperature (910g)",
-            "▢ 1 cup sugar , (200g)",
-            "▢ ⅔ cups sour cream , (160g)",
+            ", ▢ 32 oz cream cheese² softened to room temperature (910g)",
+            ", ▢ 1 cup sugar (200g)",
+            ", ▢ ⅔ cups sour cream (160g)",
             "▢ 1 ½ teaspoons vanilla extract",
             "▢ ⅛ teaspoon salt",
-            "▢ 4 large eggs , room temperature, lightly beaten"
+            ", ▢ 4 large eggs room temperature, lightly beaten"
           ]
         }
       ],
-      "instruction_groups": [],
+      "instruction_groups": [
+        {
+          "title": "Instructions",
+          "steps": [
+            "Preheat oven to 325F (160C).",
+            "Prepare Graham Cracker crust first by combining graham cracker crumbs, sugar, and brown sugar, and stirring well. Add melted butter and use a fork to combine ingredients well. graham cracker crumbs, 1 ½ cups sugar, 2 Tablespoons brown sugar, 1 Tablespoon butter 7 Tablespoons",
+            "Prepare Graham Cracker crust first by combining graham cracker crumbs, sugar, and brown sugar, and stirring well. Add melted butter and use a fork to combine ingredients well.",
+            "Pour crumbs into a 9” Springform pan and press firmly into the bottom and up the sides of your pan. Set aside."
+          ]
+        },
+        {
+          "title": "Cheesecake",
+          "steps": [
+            "In the bowl of a stand mixer or in a large bowl (using a hand mixer) add cream cheese and stir until smooth and creamy (don’t over-beat or you’ll incorporate too much air). cream cheese² 32 oz",
+            "In the bowl of a stand mixer or in a large bowl (using a hand mixer) add cream cheese and stir until smooth and creamy (don’t over-beat or you’ll incorporate too much air).",
+            "Add sugar and stir again until creamy. sugar 1 cup",
+            "Add sugar and stir again until creamy.",
+            "Add sour cream, vanilla extract, and salt, and stir until well-combined. If using a stand mixer, make sure you pause periodically to scrape the sides and bottom of the bowl with a spatula so that all ingredients are evenly incorporated. sour cream, ⅔ cups vanilla extract, 1 ½ teaspoons salt ⅛ teaspoon",
+            "Add sour cream, vanilla extract, and salt, and stir until well-combined. If using a stand mixer, make sure you pause periodically to scrape the sides and bottom of the bowl with a spatula so that all ingredients are evenly incorporated.",
+            "With mixer on low speed, gradually add lightly beaten eggs, one at a time, stirring just until each egg is just incorporated. Once all eggs have been added, use a spatula to scrape the sides and bottom of the bowl again and make sure all ingredients are well combined. large eggs 4",
+            "With mixer on low speed, gradually add lightly beaten eggs, one at a time, stirring just until each egg is just incorporated. Once all eggs have been added, use a spatula to scrape the sides and bottom of the bowl again and make sure all ingredients are well combined.",
+            "Pour cheesecake batter into prepared springform pan. To insure against leaks, place pan on a cookie sheet that’s been lined with foil.",
+            "Transfer to the center rack of your oven and bake on 325F (160C) for 50-60 minutes (or longer as needed, see note 3). Edges will likely have puffed and may have just begun to turn a golden brown and the center should spring back to the touch but will still be Jello-jiggly. Don't over-bake or the texture will suffer, which means we all suffer. slightly light",
+            "Remove from oven and allow to cool on top of the oven⁴ for 10 minutes. Once 10 minutes has passed, use a knife to gently loosen the crust from the inside of the springform pan (this will help prevent cracks as your cheesecake cools and shrinks). Do not remove the ring of the springform pan.",
+            "Allow cheesecake to cool another 1-2 hours or until near room temperature before transferring to refrigerator and allowing to cool overnight or at least 6 hours. I remove the ring of the springform pan just before serving then return it to the pan to store. Enjoy!"
+          ]
+        }
+      ],
       "prep_time": "",
       "cook_time": "",
       "total_time": "",
@@ -205,42 +357,86 @@
     "wprm": {
       "title": "The BEST Cheesecake Recipe",
       "ingredients": [
-        "▢ 1 ½ cups graham cracker crumbs , (170g)",
+        ", ▢ 1 ½ cups graham cracker crumbs (170g)",
         "▢ 2 Tablespoons sugar",
-        "▢ 1 Tablespoon brown sugar , (can substitute white)",
-        "▢ 7 Tablespoons butter , melted",
-        "▢ 32 oz cream cheese² , softened to room temperature (910g)",
-        "▢ 1 cup sugar , (200g)",
-        "▢ ⅔ cups sour cream , (160g)",
+        ", ▢ 1 Tablespoon brown sugar (can substitute white)",
+        ", ▢ 7 Tablespoons butter melted",
+        ", ▢ 32 oz cream cheese² softened to room temperature (910g)",
+        ", ▢ 1 cup sugar (200g)",
+        ", ▢ ⅔ cups sour cream (160g)",
         "▢ 1 ½ teaspoons vanilla extract",
         "▢ ⅛ teaspoon salt",
-        "▢ 4 large eggs , room temperature, lightly beaten"
+        ", ▢ 4 large eggs room temperature, lightly beaten"
       ],
-      "instructions": [],
+      "instructions": [
+        "Preheat oven to 325F (160C).",
+        "Prepare Graham Cracker crust first by combining graham cracker crumbs, sugar, and brown sugar, and stirring well. Add melted butter and use a fork to combine ingredients well. graham cracker crumbs, 1 ½ cups sugar, 2 Tablespoons brown sugar, 1 Tablespoon butter 7 Tablespoons",
+        "Prepare Graham Cracker crust first by combining graham cracker crumbs, sugar, and brown sugar, and stirring well. Add melted butter and use a fork to combine ingredients well.",
+        "Pour crumbs into a 9” Springform pan and press firmly into the bottom and up the sides of your pan. Set aside.",
+        "In the bowl of a stand mixer or in a large bowl (using a hand mixer) add cream cheese and stir until smooth and creamy (don’t over-beat or you’ll incorporate too much air). cream cheese² 32 oz",
+        "In the bowl of a stand mixer or in a large bowl (using a hand mixer) add cream cheese and stir until smooth and creamy (don’t over-beat or you’ll incorporate too much air).",
+        "Add sugar and stir again until creamy. sugar 1 cup",
+        "Add sugar and stir again until creamy.",
+        "Add sour cream, vanilla extract, and salt, and stir until well-combined. If using a stand mixer, make sure you pause periodically to scrape the sides and bottom of the bowl with a spatula so that all ingredients are evenly incorporated. sour cream, ⅔ cups vanilla extract, 1 ½ teaspoons salt ⅛ teaspoon",
+        "Add sour cream, vanilla extract, and salt, and stir until well-combined. If using a stand mixer, make sure you pause periodically to scrape the sides and bottom of the bowl with a spatula so that all ingredients are evenly incorporated.",
+        "With mixer on low speed, gradually add lightly beaten eggs, one at a time, stirring just until each egg is just incorporated. Once all eggs have been added, use a spatula to scrape the sides and bottom of the bowl again and make sure all ingredients are well combined. large eggs 4",
+        "With mixer on low speed, gradually add lightly beaten eggs, one at a time, stirring just until each egg is just incorporated. Once all eggs have been added, use a spatula to scrape the sides and bottom of the bowl again and make sure all ingredients are well combined.",
+        "Pour cheesecake batter into prepared springform pan. To insure against leaks, place pan on a cookie sheet that’s been lined with foil.",
+        "Transfer to the center rack of your oven and bake on 325F (160C) for 50-60 minutes (or longer as needed, see note 3). Edges will likely have puffed and may have just begun to turn a golden brown and the center should spring back to the touch but will still be Jello-jiggly. Don't over-bake or the texture will suffer, which means we all suffer. slightly light",
+        "Remove from oven and allow to cool on top of the oven⁴ for 10 minutes. Once 10 minutes has passed, use a knife to gently loosen the crust from the inside of the springform pan (this will help prevent cracks as your cheesecake cools and shrinks). Do not remove the ring of the springform pan.",
+        "Allow cheesecake to cool another 1-2 hours or until near room temperature before transferring to refrigerator and allowing to cool overnight or at least 6 hours. I remove the ring of the springform pan just before serving then return it to the pan to store. Enjoy!"
+      ],
       "image_url": "https://sugarspunrun.com/wp-content/uploads/2019/01/Best-Cheesecake-Recipe-2-1-of-1-4.jpg",
       "ingredient_groups": [
         {
-          "title": "4.96 from 3472 votes 4.96 from 3472 votes How to make the creamiest, BEST Cheesecake Recipe! Oh, and there's no water bath required! Prep: 20 minutes mins Cook: 1 hour hr 15 minutes mins Cooling Time: 6 hours hrs Total: 7 hours hrs 35 minutes mins Servings: 12 slices Equipment 9\" Springform pan Mixing bowls Save this recipe! Ingredients Graham Cracker Crust¹",
+          "title": "Graham Cracker Crust¹",
           "items": [
-            "▢ 1 ½ cups graham cracker crumbs , (170g)",
+            ", ▢ 1 ½ cups graham cracker crumbs (170g)",
             "▢ 2 Tablespoons sugar",
-            "▢ 1 Tablespoon brown sugar , (can substitute white)",
-            "▢ 7 Tablespoons butter , melted"
+            ", ▢ 1 Tablespoon brown sugar (can substitute white)",
+            ", ▢ 7 Tablespoons butter melted"
           ]
         },
         {
           "title": "Cheesecake",
           "items": [
-            "▢ 32 oz cream cheese² , softened to room temperature (910g)",
-            "▢ 1 cup sugar , (200g)",
-            "▢ ⅔ cups sour cream , (160g)",
+            ", ▢ 32 oz cream cheese² softened to room temperature (910g)",
+            ", ▢ 1 cup sugar (200g)",
+            ", ▢ ⅔ cups sour cream (160g)",
             "▢ 1 ½ teaspoons vanilla extract",
             "▢ ⅛ teaspoon salt",
-            "▢ 4 large eggs , room temperature, lightly beaten"
+            ", ▢ 4 large eggs room temperature, lightly beaten"
           ]
         }
       ],
-      "instruction_groups": [],
+      "instruction_groups": [
+        {
+          "title": "Instructions",
+          "steps": [
+            "Preheat oven to 325F (160C).",
+            "Prepare Graham Cracker crust first by combining graham cracker crumbs, sugar, and brown sugar, and stirring well. Add melted butter and use a fork to combine ingredients well. graham cracker crumbs, 1 ½ cups sugar, 2 Tablespoons brown sugar, 1 Tablespoon butter 7 Tablespoons",
+            "Prepare Graham Cracker crust first by combining graham cracker crumbs, sugar, and brown sugar, and stirring well. Add melted butter and use a fork to combine ingredients well.",
+            "Pour crumbs into a 9” Springform pan and press firmly into the bottom and up the sides of your pan. Set aside."
+          ]
+        },
+        {
+          "title": "Cheesecake",
+          "steps": [
+            "In the bowl of a stand mixer or in a large bowl (using a hand mixer) add cream cheese and stir until smooth and creamy (don’t over-beat or you’ll incorporate too much air). cream cheese² 32 oz",
+            "In the bowl of a stand mixer or in a large bowl (using a hand mixer) add cream cheese and stir until smooth and creamy (don’t over-beat or you’ll incorporate too much air).",
+            "Add sugar and stir again until creamy. sugar 1 cup",
+            "Add sugar and stir again until creamy.",
+            "Add sour cream, vanilla extract, and salt, and stir until well-combined. If using a stand mixer, make sure you pause periodically to scrape the sides and bottom of the bowl with a spatula so that all ingredients are evenly incorporated. sour cream, ⅔ cups vanilla extract, 1 ½ teaspoons salt ⅛ teaspoon",
+            "Add sour cream, vanilla extract, and salt, and stir until well-combined. If using a stand mixer, make sure you pause periodically to scrape the sides and bottom of the bowl with a spatula so that all ingredients are evenly incorporated.",
+            "With mixer on low speed, gradually add lightly beaten eggs, one at a time, stirring just until each egg is just incorporated. Once all eggs have been added, use a spatula to scrape the sides and bottom of the bowl again and make sure all ingredients are well combined. large eggs 4",
+            "With mixer on low speed, gradually add lightly beaten eggs, one at a time, stirring just until each egg is just incorporated. Once all eggs have been added, use a spatula to scrape the sides and bottom of the bowl again and make sure all ingredients are well combined.",
+            "Pour cheesecake batter into prepared springform pan. To insure against leaks, place pan on a cookie sheet that’s been lined with foil.",
+            "Transfer to the center rack of your oven and bake on 325F (160C) for 50-60 minutes (or longer as needed, see note 3). Edges will likely have puffed and may have just begun to turn a golden brown and the center should spring back to the touch but will still be Jello-jiggly. Don't over-bake or the texture will suffer, which means we all suffer. slightly light",
+            "Remove from oven and allow to cool on top of the oven⁴ for 10 minutes. Once 10 minutes has passed, use a knife to gently loosen the crust from the inside of the springform pan (this will help prevent cracks as your cheesecake cools and shrinks). Do not remove the ring of the springform pan.",
+            "Allow cheesecake to cool another 1-2 hours or until near room temperature before transferring to refrigerator and allowing to cool overnight or at least 6 hours. I remove the ring of the springform pan just before serving then return it to the pan to store. Enjoy!"
+          ]
+        }
+      ],
       "servings": "12, 12 slices",
       "prep_time": "20 minutes",
       "cook_time": "1h 15m",

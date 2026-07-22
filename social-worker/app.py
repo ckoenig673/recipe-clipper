@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 logging.basicConfig(level=logging.INFO)
 logger=logging.getLogger(__name__)
 app=FastAPI(title='social-worker',version='1.0.0')
+INTERNAL_ERROR_MESSAGE = "Download failed while processing this request."
 class DownloadRequest(BaseModel):
     url:str=Field(min_length=1)
     facebook_cookie:str|None=None
@@ -17,6 +18,7 @@ class DownloadResponse(BaseModel):
     elapsed_seconds:float|None=None
     error:str|None=None
     stage:str|None=None
+    diagnostic_id:str|None=None
 
 @app.get('/health')
 def health()->dict:
@@ -56,5 +58,6 @@ def download_social_video(payload:DownloadRequest)->DownloadResponse:
             return DownloadResponse(success=True,media_path=str(shared_path),info=info,elapsed_seconds=elapsed)
     except Exception as exc:
         elapsed=round(time.monotonic()-started_at,3)
-        logger.warning('social_downloader_ytdlp_failure elapsed_s=%.3f',elapsed)
-        return DownloadResponse(success=False,error=str(exc) or 'download_failed',stage='yt-dlp')
+        diagnostic_id=uuid.uuid4().hex
+        logger.exception('social_downloader_ytdlp_failure diagnostic_id=%s elapsed_s=%.3f error=%s',diagnostic_id,elapsed,str(exc))
+        return DownloadResponse(success=False,error=INTERNAL_ERROR_MESSAGE,stage='yt-dlp',diagnostic_id=diagnostic_id)

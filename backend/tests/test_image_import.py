@@ -1,4 +1,5 @@
 import asyncio
+import time
 from io import BytesIO
 from unittest.mock import patch
 
@@ -731,3 +732,38 @@ def test_extract_ingredient_candidates_excludes_instruction_drizzle_line():
     ingredients = main._extract_ingredient_candidates_from_text(lines, text)
 
     assert "Drizzle with melted chocolate, if desired" not in ingredients
+
+
+def test_parse_social_caption_recipe_bounds_oversized_first_line_and_finishes_quickly():
+    huge_prefix = ("metadata " * 3000) + "TOPSY-TURVY BANANA CRUNCH CAKE"
+    text = "\n".join([huge_prefix, "Ingredients", "2 cups flour", "Instructions", "Bake until done."])
+
+    started = time.perf_counter()
+    parsed = main.parse_social_caption_recipe(text, source_url="image://upload/scan.png", title_hint="")
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert "Ingredients" not in parsed["title"]
+
+
+def test_parse_pasted_recipe_text_bounds_oversized_metadata_lines():
+    raw_text = "\n".join(
+        [
+            "Weeknight Soup",
+            "Servings: " + ("4 " * 3000),
+            "Prep Time: 15 minutes",
+            "Ingredients",
+            "1 cup broth",
+            "Instructions",
+            "Simmer gently.",
+        ]
+    )
+
+    started = time.perf_counter()
+    parsed = main._parse_pasted_recipe_text(raw_text)
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert parsed["title"] == "Weeknight Soup"
+    assert parsed["prep_time"] == "15 minutes"
+    assert parsed["ingredients"] == ["1 cup broth"]
