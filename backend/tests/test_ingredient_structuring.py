@@ -171,6 +171,36 @@ def test_parse_ingredient_struct_handles_long_parenthetical_note_quickly():
     assert parsed["note"].startswith("optional")
 
 
+def test_parse_ingredient_struct_preserves_unmatched_opening_parenthetical_text():
+    parsed = _parse_ingredient_struct("1 cup flour (plus more for dusting")
+
+    assert parsed["quantity"] == 1.0
+    assert parsed["unit"] == "cup"
+    assert parsed["name"] == "flour (plus more for dusting"
+    assert parsed["note"] is None
+    assert parsed["display_text"] == "1 cup flour (plus more for dusting"
+
+
+def test_parse_ingredient_struct_preserves_unmatched_closing_parenthesis_in_text():
+    parsed = _parse_ingredient_struct("1 cup flour ) plus more for dusting")
+
+    assert parsed["quantity"] == 1.0
+    assert parsed["unit"] == "cup"
+    assert parsed["name"] == "flour ) plus more for dusting"
+    assert parsed["note"] is None
+    assert parsed["display_text"] == "1 cup flour ) plus more for dusting"
+
+
+def test_parse_ingredient_struct_keeps_balanced_and_multiple_parenthetical_notes():
+    parsed = _parse_ingredient_struct("1 cup flour (sifted) (plus more for dusting)")
+
+    assert parsed["quantity"] == 1.0
+    assert parsed["unit"] == "cup"
+    assert parsed["name"] == "flour"
+    assert parsed["note"] == "sifted ; plus more for dusting"
+    assert parsed["display_text"] == "1 cup flour (sifted ; plus more for dusting)"
+
+
 def test_normalize_ingredient_name_removes_leading_descriptors():
     assert _normalize_ingredient_name("chopped pecans") == "pecans"
     assert _normalize_ingredient_name("fresh basil") == "basil"
@@ -404,6 +434,18 @@ def test_finalize_recipe_candidate_preserves_string_ingredients_and_adds_structu
             "display_text": "salt to taste",
         },
     ]
+
+
+def test_finalize_recipe_candidate_preserves_unmatched_parenthetical_ingredient_text():
+    finalized = _finalize_recipe_candidate(
+        {"ingredients": ["1 cup flour (plus more for dusting"], "instructions": ["mix"]},
+        "https://example.com/recipe",
+        "unit-test",
+    )
+
+    assert finalized["ingredients"] == ["1 cup flour (plus more for dusting"]
+    assert finalized["ingredients_structured"][0]["name"] == "flour (plus more for dusting"
+    assert finalized["ingredients_structured"][0]["display_text"] == "1 cup flour (plus more for dusting"
 
 
 def test_scale_ingredient_doubles_half_cup_to_one_cup():

@@ -642,6 +642,36 @@ def test_prepare_saved_recipe_for_ai_cleanup_repairs_current_biscuit_transcript_
     ]
 
 
+def test_normalize_ai_cleanup_prompt_payload_preserves_unmatched_parenthetical_ingredient_text():
+    normalized = main._normalize_ai_cleanup_prompt_payload(
+        {
+            "title": "Bench Bread",
+            "ingredient_groups": [
+                {
+                    "title": "",
+                    "items": [
+                        "1 cup flour (plus more for dusting",
+                        "1 cup flour ) for the counter",
+                        "1 cup flour (sifted) (plus more for dusting)",
+                    ],
+                }
+            ],
+            "instruction_groups": [{"title": "Instructions", "steps": ["Mix."]}],
+        }
+    )
+
+    assert normalized["ingredient_groups"] == [
+        {
+            "title": "",
+            "items": [
+                "1 cup flour (plus more for dusting",
+                "1 cup flour ) for the counter",
+                "1 cup flour (sifted ; plus more for dusting)",
+            ],
+        }
+    ]
+
+
 def test_build_transcript_cleanup_prompt_includes_conservative_editor_rules():
     prompt = main._build_transcript_cleanup_prompt(
         {
