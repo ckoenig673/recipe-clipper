@@ -82,6 +82,25 @@ def test_parse_pasted_recipe_text_normalizes_markdown_bullets_and_numbered_steps
     ]
 
 
+def test_parse_pasted_recipe_text_preserves_unmatched_parenthetical_ingredient_text():
+    raw_text = """
+    Bench Bread
+
+    Ingredients
+    1 cup flour (plus more for dusting
+
+    Instructions
+    Mix into a shaggy dough.
+    """
+
+    parsed = main._parse_pasted_recipe_text(raw_text)
+
+    assert parsed["ingredients"] == ["1 cup flour (plus more for dusting"]
+    assert parsed["ingredient_groups"] == [{"title": "", "items": ["1 cup flour (plus more for dusting"]}]
+    assert parsed["ingredients_structured"][0]["name"] == "flour (plus more for dusting"
+    assert parsed["ingredients_structured"][0]["display_text"] == "1 cup flour (plus more for dusting"
+
+
 def test_parse_pasted_recipe_text_preserves_description_and_moves_terminal_notes_out_of_instructions():
     raw_text = """
     Creamy Tomato Pasta

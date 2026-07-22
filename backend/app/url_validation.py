@@ -1,8 +1,16 @@
 import ipaddress
 import socket
+from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3 import PoolManager
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connection import connection as urllib3_connection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+from urllib3.exceptions import ConnectTimeoutError, NameResolutionError, NewConnectionError
+from urllib3.poolmanager import PoolKey, _default_key_normalizer
 
 
 class PublicUrlValidationError(ValueError):
@@ -46,6 +54,17 @@ BLOCKED_IP_NETWORKS = (
 )
 
 
+@dataclass(frozen=True)
+class _ResolvedPublicUrl:
+    normalized_url: str
+    origin_prefix: str
+    scheme: str
+    hostname: str
+    host_header: str
+    port: int
+    resolved_ips: tuple[str, ...]
+
+
 def _normalized_hostname(hostname: str | None) -> str:
     return (hostname or "").rstrip(".").strip().lower()
 
@@ -76,7 +95,7 @@ def _is_blocked_ip(ip_text: str) -> bool:
     return any(ip in network for network in BLOCKED_IP_NETWORKS)
 
 
-def validate_public_url(url: str) -> str:
+def _resolve_public_url(url: str) -> _ResolvedPublicUrl:
     value = str(url or "").strip()
     if not value:
         raise PublicUrlValidationError(USER_FACING_PUBLIC_URL_ERROR)
@@ -117,7 +136,116 @@ def validate_public_url(url: str) -> str:
         if _is_blocked_ip(ip_text):
             raise PublicUrlValidationError(USER_FACING_PUBLIC_URL_ERROR)
 
-    return urlunparse(parsed._replace(fragment=""))
+    normalized_url = urlunparse(parsed._replace(fragment=""))
+    return _ResolvedPublicUrl(
+        normalized_url=normalized_url,
+        origin_prefix=f"{parsed.scheme}://{parsed.netloc}",
+        scheme=parsed.scheme,
+        hostname=hostname,
+        host_header=parsed.netloc,
+        port=port,
+        resolved_ips=tuple(sorted(resolved_ips)),
+    )
+
+
+def validate_public_url(url: str) -> str:
+    return _resolve_public_url(url).normalized_url
+
+
+class _ValidatedAddressAdapter(HTTPAdapter):
+    def __init__(self, target: _ResolvedPublicUrl, destination_ip: str):
+        self._target = target
+        self._destination_ip = destination_ip
+        super().__init__()
+
+    def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
+        pool_kwargs["destination_ip"] = self._destination_ip
+        self.poolmanager = PoolManager(
+            num_pools=connections,
+            maxsize=maxsize,
+            block=block,
+            **pool_kwargs,
+        )
+        self.poolmanager.pool_classes_by_scheme = {
+            "http": _ValidatedHTTPConnectionPool,
+            "https": _ValidatedHTTPSConnectionPool,
+        }
+        self.poolmanager.key_fn_by_scheme = {
+            "http": _validated_pool_key,
+            "https": _validated_pool_key,
+        }
+
+    def get_connection_with_tls_context(self, request, verify, proxies=None, cert=None):
+        host_params, pool_kwargs = self.build_connection_pool_key_attributes(request, verify, cert)
+        host_params["port"] = self._target.port
+        host_params["scheme"] = self._target.scheme
+        if self._target.scheme == "https":
+            pool_kwargs["assert_hostname"] = self._target.hostname
+            pool_kwargs["server_hostname"] = self._target.hostname
+        return self.poolmanager.connection_from_host(**host_params, pool_kwargs=pool_kwargs)
+
+
+class _ValidatedHTTPConnection(HTTPConnection):
+    def __init__(self, *args, destination_ip: str, **kwargs):
+        self._validated_destination_ip = destination_ip
+        super().__init__(*args, **kwargs)
+
+    def _new_conn(self):
+        try:
+            sock = urllib3_connection.create_connection(
+                (self._validated_destination_ip, self.port),
+                self.timeout,
+                source_address=self.source_address,
+                socket_options=self.socket_options,
+            )
+        except socket.gaierror as exc:
+            raise NameResolutionError(self.host, self, exc) from exc
+        except TimeoutError as exc:
+            raise ConnectTimeoutError(
+                self,
+                f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
+            ) from exc
+        except OSError as exc:
+            raise NewConnectionError(self, f"Failed to establish a new connection: {exc}") from exc
+        return sock
+
+
+class _ValidatedHTTPSConnection(HTTPSConnection):
+    def __init__(self, *args, destination_ip: str, **kwargs):
+        self._validated_destination_ip = destination_ip
+        super().__init__(*args, **kwargs)
+
+    def _new_conn(self):
+        try:
+            sock = urllib3_connection.create_connection(
+                (self._validated_destination_ip, self.port),
+                self.timeout,
+                source_address=self.source_address,
+                socket_options=self.socket_options,
+            )
+        except socket.gaierror as exc:
+            raise NameResolutionError(self.host, self, exc) from exc
+        except TimeoutError as exc:
+            raise ConnectTimeoutError(
+                self,
+                f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
+            ) from exc
+        except OSError as exc:
+            raise NewConnectionError(self, f"Failed to establish a new connection: {exc}") from exc
+        return sock
+
+
+class _ValidatedHTTPConnectionPool(HTTPConnectionPool):
+    ConnectionCls = _ValidatedHTTPConnection
+
+
+class _ValidatedHTTPSConnectionPool(HTTPSConnectionPool):
+    ConnectionCls = _ValidatedHTTPSConnection
+
+
+def _validated_pool_key(request_context):
+    normalized_context = {key: value for key, value in request_context.items() if key != "destination_ip"}
+    return _default_key_normalizer(PoolKey, normalized_context)
 
 
 def safe_get(
@@ -132,13 +260,38 @@ def safe_get(
     owns_session = session is None
     active_session = session or requests.Session()
     try:
+        # Flow:
+        # 1. Normalize and resolve the destination hostname.
+        # 2. Reject any non-public resolved address.
+        # 3. Bind the outbound socket to one validated IP literal so the HTTP client
+        #    never performs a second hostname lookup during connect.
+        # 4. Preserve the original hostname in the Host header and HTTPS SNI/cert checks.
+        # 5. Re-run the same process for every redirect target before following it.
         for _ in range(max_redirects + 1):
-            response = active_session.get(
-                current_url,
-                headers=headers,
-                timeout=timeout,
-                allow_redirects=False,
-            )
+            target = _resolve_public_url(current_url)
+            response = None
+            last_error = None
+            for destination_ip in target.resolved_ips:
+                adapter = _ValidatedAddressAdapter(target, destination_ip)
+                original_adapters = active_session.adapters.copy()
+                try:
+                    active_session.mount(target.origin_prefix, adapter)
+                    response = active_session.get(
+                        target.normalized_url,
+                        headers=headers,
+                        timeout=timeout,
+                        allow_redirects=False,
+                    )
+                    break
+                except requests.RequestException as exc:
+                    last_error = exc
+                finally:
+                    active_session.adapters = original_adapters
+                    adapter.close()
+            if response is None:
+                if last_error is not None:
+                    raise last_error
+                raise PublicUrlValidationError(USER_FACING_PUBLIC_URL_ERROR)
             if response.is_redirect or response.is_permanent_redirect:
                 location = (response.headers.get("Location") or "").strip()
                 if not location:

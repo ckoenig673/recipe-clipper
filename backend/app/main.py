@@ -6592,6 +6592,10 @@ def _extract_parenthetical_notes(value: str) -> tuple[str, list[str]]:
         else:
             base_chars.append(char)
 
+    if depth > 0:
+        base_chars.append("(")
+        base_chars.extend(current_note)
+
     stripped = " ".join("".join(base_chars).split())
     return stripped, notes
 
