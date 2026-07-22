@@ -125,13 +125,56 @@ def test_facebook_cookie_test_statuses(monkeypatch):
 def test_facebook_cookie_domain_checks_use_parsed_hostname_validation():
     assert main._looks_like_facebook_cookie_value(".facebook.com\tTRUE\t/\tTRUE\t0\tc_user\t12345")
     assert main._looks_like_facebook_cookie_value("FACEBOOK.COM.\tTRUE\t/\tTRUE\t0\txs\tabc")
+    assert main._looks_like_facebook_cookie_value("#HttpOnly_.facebook.com\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+    assert main._looks_like_facebook_cookie_value("#HttpOnly_WWW.FACEBOOK.COM.\tTRUE\t/\tTRUE\t0\txs\tabc")
     assert not main._looks_like_facebook_cookie_value("facebook.com.attacker.test\tTRUE\t/\tTRUE\t0\tc_user\t12345")
     assert not main._looks_like_facebook_cookie_value("facebook.com@evil.example\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+    assert not main._looks_like_facebook_cookie_value("#HttpOnly_facebook.com.attacker.test\tTRUE\t/\tTRUE\t0\tc_user\t12345")
 
     assert main._is_raw_facebook_cookie_blob(".facebook.com\tTRUE\t/\tTRUE\t0\tc_user\t12345")
     assert main._is_raw_facebook_cookie_blob("FACEBOOK.COM.\tTRUE\t/\tTRUE\t0\txs\tabc")
+    assert main._is_raw_facebook_cookie_blob("#HttpOnly_.facebook.com\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+    assert main._is_raw_facebook_cookie_blob("#HttpOnly_WWW.FACEBOOK.COM.\tTRUE\t/\tTRUE\t0\txs\tabc")
     assert not main._is_raw_facebook_cookie_blob("facebook.com.attacker.test\tTRUE\t/\tTRUE\t0\tc_user\t12345")
     assert not main._is_raw_facebook_cookie_blob("facebook.com@evil.example\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+    assert not main._is_raw_facebook_cookie_blob("#HttpOnly_facebook.com.attacker.test\tTRUE\t/\tTRUE\t0\tc_user\t12345")
+
+
+def test_facebook_cookie_test_endpoint_accepts_netscape_httponly_cookie_file(monkeypatch):
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        original_db = main.DB
+        try:
+            main.DB = str(Path(tmp_dir) / "recipes.db")
+            monkeypatch.setenv("USER_SETTINGS_ENCRYPTION_KEY", "l1k8sEHPAs6TLKG3tA4aF6k5DAt84sYI6FqdtYYdlcE=")
+            main.init_db()
+            user_id = _create_user()
+            client = TestClient(main.app)
+            assert _login(client).status_code == 200
+
+            cookie_file = "\n".join(
+                (
+                    "# Netscape HTTP Cookie File",
+                    "#HttpOnly_.facebook.com\tTRUE\t/\tTRUE\t0\tc_user\t12345",
+                    "#HttpOnly_www.facebook.com\tFALSE\t/\tTRUE\t0\txs\tabc",
+                )
+            )
+            encrypted_cookie = main._encrypt_user_setting(cookie_file)
+            conn = main.get_conn()
+            conn.execute(
+                '''
+                INSERT INTO user_import_settings (user_id, facebook_cookie_encrypted, facebook_cookie_updated_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                ''',
+                (user_id, encrypted_cookie, main.utcnow_iso(), main.utcnow_iso()),
+            )
+            conn.commit()
+            conn.close()
+
+            test_resp = client.post("/settings/import/facebook-cookie/test")
+            assert test_resp.status_code == 200
+            assert test_resp.json()["status"] == "success"
+        finally:
+            main.DB = original_db
 
 
 def test_unreadable_facebook_cookie_reports_recovery_state_and_can_be_replaced_or_cleared(monkeypatch):

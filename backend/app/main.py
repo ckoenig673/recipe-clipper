@@ -23,7 +23,12 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from urllib.parse import urlparse, parse_qs, parse_qsl, quote_plus, unquote, urljoin, urlencode, urlunparse
 from .html_sanitization import extract_json_ld_payloads, extract_visible_text
-from .hostname_matching import hostname_matches_any, parse_hostname, url_hostname_matches_any
+from .hostname_matching import (
+    hostname_matches_any,
+    normalize_netscape_cookie_domain,
+    parse_hostname,
+    url_hostname_matches_any,
+)
 from .social_resolver import is_valid_social_destination_url, resolve_social_url
 from .social_video_pipeline import (
     TranscriptPipelineResult,
@@ -1656,9 +1661,28 @@ def _trim_output_whitespace(chars: list[str]) -> None:
 
 
 def _append_sentence_break(chars: list[str]) -> None:
-    _trim_output_whitespace(chars)
-    if chars and chars[-1] not in ".!?:\n":
-        chars.extend(". ")
+    if not chars:
+        return
+
+    last_non_whitespace = len(chars) - 1
+    while last_non_whitespace >= 0 and chars[last_non_whitespace].isspace():
+        last_non_whitespace -= 1
+
+    if last_non_whitespace < 0:
+        return
+
+    trailing_whitespace = chars[last_non_whitespace + 1:]
+    del chars[last_non_whitespace + 1:]
+
+    if any(char == "\n" for char in trailing_whitespace):
+        chars.append("\n")
+        return
+
+    if chars[-1] in ".!?:":
+        chars.append(" ")
+        return
+
+    chars.extend(". ")
 
 
 def _insert_sentence_break_before_labels(value: str, labels: tuple[str, ...]) -> str:
@@ -8527,7 +8551,7 @@ def _looks_like_facebook_cookie_value(value: str) -> bool:
     for line in normalized.splitlines():
         if "\t" not in line:
             continue
-        host = line.split("\t", 1)[0]
+        host = normalize_netscape_cookie_domain(line.split("\t", 1)[0])
         if hostname_matches_any(host, ("facebook.com",)):
             return True
     return False
@@ -8543,7 +8567,7 @@ def _is_raw_facebook_cookie_blob(value: str) -> bool:
     for line in normalized.splitlines():
         if "\t" not in line:
             continue
-        host = line.split("\t", 1)[0]
+        host = normalize_netscape_cookie_domain(line.split("\t", 1)[0])
         if hostname_matches_any(host, ("facebook.com",)):
             return True
     return bool(re.search(r"[\r\n]+", normalized))
@@ -9833,7 +9857,12 @@ def put_recipe_state(
 
 
 @app.get("/extract-metadata")
-def extract_metadata(request: Request, url: str = Query(...), current_user: dict = Depends(require_user), _: dict | None = None):
+def extract_metadata(
+    request: Request = None,
+    url: str = Query(...),
+    current_user: dict = Depends(require_user),
+    _: dict | None = None,
+):
     if not isinstance(current_user, dict):
         current_user = {}
     if not current_user and _:
@@ -10299,10 +10328,11 @@ def extract_metadata(request: Request, url: str = Query(...), current_user: dict
     except PublicUrlValidationError as exc:
         raise HTTPException(status_code=422, detail=USER_FACING_PUBLIC_URL_ERROR) from exc
     except Exception as exc:
-        correlation_id = _request_correlation_id(request)
+        correlation_id = _request_correlation_id(request) if request is not None else _new_correlation_id()
+        request_path = request.url.path if request is not None else "<direct-call>"
         logger.exception(
             "extract-metadata failed path=%s raw_url=%s is_social=%s correlation_id=%s error_type=%s error=%s",
-            request.url.path,
+            request_path,
             raw_url,
             is_social,
             correlation_id,

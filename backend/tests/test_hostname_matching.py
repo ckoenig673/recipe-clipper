@@ -1,7 +1,12 @@
 from unittest.mock import patch
 
 from backend.app import main
-from backend.app.hostname_matching import hostname_matches_domain, parse_hostname, url_hostname_matches_any
+from backend.app.hostname_matching import (
+    hostname_matches_domain,
+    normalize_netscape_cookie_domain,
+    parse_hostname,
+    url_hostname_matches_any,
+)
 
 
 def test_hostname_matches_domain_accepts_exact_domains_and_valid_subdomains():
@@ -36,6 +41,12 @@ def test_url_hostname_matches_any_rejects_malformed_and_lookalike_urls():
     assert not url_hostname_matches_any("https://attackerfacebook.com/share/abc", ("facebook.com",))
     assert not url_hostname_matches_any("https://[::1]/reel/123", ("facebook.com",))
     assert not url_hostname_matches_any("https://127.0.0.1/reel/123", ("facebook.com",))
+
+
+def test_normalize_netscape_cookie_domain_strips_httponly_prefix_and_normalizes_host():
+    assert normalize_netscape_cookie_domain("#HttpOnly_.facebook.com") == "facebook.com"
+    assert normalize_netscape_cookie_domain("#HttpOnly_WWW.FACEBOOK.COM.") == "www.facebook.com"
+    assert normalize_netscape_cookie_domain("FACEBOOK.COM.") == "facebook.com"
 
 
 def test_source_detection_uses_parsed_hostnames():

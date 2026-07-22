@@ -544,6 +544,57 @@ def test_split_instruction_sentences_rewrites_colon_after_smooth_transition():
     ]
 
 
+@pytest.mark.parametrize(
+    ("ocr_text", "expected"),
+    [
+        ("Mix batter Filling: Add sugar", "Mix batter. Filling: Add sugar"),
+        ("Mix batter. Filling: Add sugar", "Mix batter. Filling: Add sugar"),
+        ("Mix batter? Filling: Add sugar", "Mix batter? Filling: Add sugar"),
+        ("Mix batter! Filling: Add sugar", "Mix batter! Filling: Add sugar"),
+        ("Mix batter: Filling: Add sugar", "Mix batter: Filling: Add sugar"),
+        ("Mix batter.    Filling: Add sugar", "Mix batter. Filling: Add sugar"),
+        ("Mix batter.\nFilling: Add sugar", "Mix batter.\nFilling: Add sugar"),
+    ],
+)
+def test_insert_sentence_break_before_labels_preserves_separator_before_recognized_labels(ocr_text, expected):
+    normalized = main._insert_sentence_break_before_labels(
+        ocr_text,
+        ("Filling", "Mash", "To Finish"),
+    )
+
+    assert normalized == expected
+
+
+def test_insert_sentence_break_before_labels_normalizes_repeated_whitespace_without_duplicate_punctuation():
+    normalized = main._insert_sentence_break_before_labels(
+        "Mix batter.   Filling: Add sugar",
+        ("Filling", "Mash", "To Finish"),
+    )
+
+    assert normalized == "Mix batter. Filling: Add sugar"
+
+
+def test_insert_sentence_break_before_labels_preserves_newline_separator():
+    normalized = main._insert_sentence_break_before_labels(
+        "Mix batter.\n   Filling: Add sugar",
+        ("Filling", "Mash", "To Finish"),
+    )
+
+    assert normalized == "Mix batter.\nFilling: Add sugar"
+
+
+def test_split_instruction_sentences_separates_multiple_adjacent_recognized_labels():
+    ocr_text = "Increase speed; beat until smooth Filling: Spoon into pan To Finish: Serve warm"
+
+    steps = main._split_instruction_sentences(ocr_text)
+
+    assert steps == [
+        "Increase speed; beat until smooth.",
+        "Filling: Spoon into pan.",
+        "To Finish: Serve warm.",
+    ]
+
+
 def test_split_instruction_sentences_handles_long_ocr_heading_runs_quickly():
     repeated_space = " " * 4000
     ocr_text = (
