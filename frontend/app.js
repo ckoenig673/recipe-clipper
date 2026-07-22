@@ -2574,6 +2574,30 @@ function parseHostname(value) {
   }
 }
 
+function normalizePreviewImageUrl(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+
+  if (/^data:/i.test(normalized)) {
+    return /^data:image\/[^;,]+(?:;[^,]*)?,/i.test(normalized) ? normalized : "";
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    const protocol = parsed.protocol.toLowerCase();
+    if (protocol === "http:" || protocol === "https:") {
+      return parsed.href;
+    }
+    if (protocol === "blob:" && /^blob:(https?:\/\/|null\/)/i.test(normalized) && !/\s/.test(normalized)) {
+      return parsed.href;
+    }
+  } catch (_) {
+    return "";
+  }
+
+  return "";
+}
+
 function isSocialShareUrl(value) {
   const host = parseHostname(value);
   return (
@@ -3311,12 +3335,13 @@ function syncImageInputFromParsed() {
 
 function renderEditImagePreview() {
   const imageUrl = String(imageUrlInput?.value || "").trim();
+  const previewImageUrl = normalizePreviewImageUrl(imageUrl);
   if (editImagePreview) {
-    editImagePreview.src = imageUrl || "";
-    editImagePreview.classList.toggle("hidden", !imageUrl);
+    editImagePreview.src = previewImageUrl;
+    editImagePreview.classList.toggle("hidden", !previewImageUrl);
   }
   if (editImagePlaceholder) {
-    editImagePlaceholder.classList.toggle("hidden", Boolean(imageUrl));
+    editImagePlaceholder.classList.toggle("hidden", Boolean(previewImageUrl));
   }
   if (clearEditImageButton) {
     clearEditImageButton.classList.toggle("hidden", !imageUrl);
