@@ -1,6 +1,8 @@
 import tempfile
 from pathlib import Path
+import logging
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app import main
@@ -79,7 +81,7 @@ def test_internal_http_exception_does_not_expose_environment_key(monkeypatch):
             main.DB = original_db
 
 
-def test_extract_metadata_parser_exception_returns_controlled_failure(monkeypatch):
+def test_extract_metadata_parser_exception_returns_controlled_failure(monkeypatch, caplog):
     with tempfile.TemporaryDirectory() as tmp_dir:
         original_db = main.DB
         try:
@@ -93,7 +95,8 @@ def test_extract_metadata_parser_exception_returns_controlled_failure(monkeypatc
                 raise RuntimeError("traceback leaked from C:\\internal\\parser.py:63")
 
             monkeypatch.setattr(main, "fetch_recipe_data_from_url", _raise_parser_error)
-            response = client.get("/extract-metadata", params={"url": "https://example.com/recipe"})
+            with caplog.at_level(logging.ERROR):
+                response = client.get("/extract-metadata", params={"url": "https://example.com/recipe"})
 
             assert response.status_code == 502
             payload = response.json()
@@ -105,5 +108,28 @@ def test_extract_metadata_parser_exception_returns_controlled_failure(monkeypatc
             assert response.headers["X-Correlation-ID"] == payload["correlation_id"]
             assert "traceback" not in response.text.lower()
             assert "parser.py" not in response.text
+            assert "extract-metadata failed path=/extract-metadata" in caplog.text
+            assert f"correlation_id={payload['correlation_id']}" in caplog.text
+            assert "error_type=RuntimeError" in caplog.text
+            assert "traceback leaked from C:\\internal\\parser.py:63" in caplog.text
         finally:
             main.DB = original_db
+
+
+def test_extract_metadata_direct_invocation_without_request_logs_diagnostics_and_raises_sanitized_http_error(
+    monkeypatch, caplog
+):
+    def _raise_parser_error(_url: str):
+        raise RuntimeError("traceback leaked from C:\\internal\\parser.py:63")
+
+    monkeypatch.setattr(main, "fetch_recipe_data_from_url", _raise_parser_error)
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(main.HTTPException) as exc_info:
+            main.extract_metadata(url="https://example.com/recipe", _={})
+
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Recipe extraction failed while processing this page."
+    assert "extract-metadata failed path=<direct-call>" in caplog.text
+    assert "error_type=RuntimeError" in caplog.text
+    assert "traceback leaked from C:\\internal\\parser.py:63" in caplog.text

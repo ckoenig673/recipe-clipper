@@ -2301,11 +2301,17 @@ function renderEditableList(containerEl, values, options = {}) {
     reorderMode = false
   } = options;
 
+  clearElement(containerEl);
   if (!values.length) {
     const label = type === "instruction" ? "instructions" : "ingredients";
-    containerEl.innerHTML = `<p class="add-recipe-helper-text">No ${label} yet. Use the add link below to start.</p>`;
+    containerEl.appendChild(createElement("p", {
+      className: "add-recipe-helper-text",
+      text: `No ${label} yet. Use the add link below to start.`
+    }));
     return;
   }
+
+  return renderEditableListWithDom(containerEl, values, options);
 
   const rows = values
     .map((value, index) => {
@@ -3182,6 +3188,95 @@ function createElement(tagName, options = {}) {
   return element;
 }
 
+function renderEditableListWithDom(containerEl, values, options = {}) {
+  if (!containerEl) return;
+  const {
+    type = "ingredient",
+    reorderMode = false
+  } = options;
+
+  clearElement(containerEl);
+  if (!values.length) {
+    const label = type === "instruction" ? "instructions" : "ingredients";
+    containerEl.appendChild(createElement("p", {
+      className: "add-recipe-helper-text",
+      text: `No ${label} yet. Use the add link below to start.`
+    }));
+    return;
+  }
+
+  const list = createElement("div", { className: "parsed-edit-list" });
+  values.forEach((value, index) => {
+    const textValue = String(value ?? "");
+    const isSection = /^#\s*\S/.test(textValue);
+    const displayValue = isSection ? textValue.replace(/^#\s*/, "") : textValue;
+    const placeholder = isSection
+      ? "Section name"
+      : (type === "instruction" ? "Add an instruction step" : "Add an ingredient");
+    const row = createElement("div", {
+      className: `parsed-edit-row ${isSection ? "parsed-edit-row-section" : ""}`.trim(),
+      dataset: { [`${type}Row`]: index, testid: `parsed-${type}-row` }
+    });
+
+    const field = type === "instruction"
+      ? createElement("textarea", {
+        className: isSection ? "parsed-section-input" : "",
+        dataset: { [`${type}Input`]: index, ...(isSection ? { [`${type}Section`]: "true" } : {}) },
+        attributes: {
+          rows: isSection ? "1" : "2",
+          placeholder,
+          "aria-label": isSection ? "instruction section" : `${type} ${index + 1}`
+        }
+      })
+      : createElement("input", {
+        className: isSection ? "parsed-section-input" : "",
+        dataset: { [`${type}Input`]: index, ...(isSection ? { [`${type}Section`]: "true" } : {}) },
+        attributes: {
+          type: "text",
+          placeholder,
+          "aria-label": isSection ? "ingredient section" : `${type} ${index + 1}`
+        }
+      });
+    field.value = displayValue;
+    row.appendChild(field);
+
+    const actions = createElement("div", { className: "parsed-edit-actions" });
+    actions.appendChild(createElement("button", {
+      className: "parsed-row-button",
+      text: isSection ? "â†© Row" : "Â§",
+      dataset: { [`${type}ConvertSection`]: index },
+      attributes: {
+        type: "button",
+        title: isSection ? `Convert to ${type}` : `Convert to ${type} section`,
+        "aria-label": isSection ? `Convert to ${type}` : `Convert to ${type} section`
+      }
+    }));
+    if (reorderMode) {
+      actions.appendChild(createElement("button", {
+        className: "parsed-row-button",
+        text: "â†‘",
+        dataset: { [`${type}Up`]: index },
+        attributes: { type: "button", "aria-label": `Move ${type} up` }
+      }));
+      actions.appendChild(createElement("button", {
+        className: "parsed-row-button",
+        text: "â†“",
+        dataset: { [`${type}Down`]: index },
+        attributes: { type: "button", "aria-label": `Move ${type} down` }
+      }));
+    }
+    actions.appendChild(createElement("button", {
+      className: "parsed-row-button parsed-row-delete-button",
+      text: "âœ•",
+      dataset: { [`${type}Delete`]: index },
+      attributes: { type: "button", "aria-label": `Remove ${type}` }
+    }));
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+  containerEl.appendChild(list);
+}
+
 function toDisplayHost(url) {
   const normalized = String(url || "").trim();
   if (!normalized) return "";
@@ -3701,29 +3796,49 @@ function setAiCleanupReviewStatus(message = "", tone = "info") {
   aiCleanupReviewStatus.classList.toggle("info", tone === "info");
 }
 
-function renderAiCleanupReview(review) {
+function renderAiCleanupReviewWithDom(review) {
   if (!aiCleanupReviewChanges) return;
+  clearElement(aiCleanupReviewChanges);
   if (!review?.changes?.length) {
-    aiCleanupReviewChanges.innerHTML = '<p class="ai-cleanup-review-no-changes">No meaningful improvements recommended.</p>';
+    aiCleanupReviewChanges.appendChild(createElement("p", {
+      className: "ai-cleanup-review-no-changes",
+      text: "No meaningful improvements recommended."
+    }));
     return;
   }
 
-  aiCleanupReviewChanges.innerHTML = review.changes.map(({ key, label, type }) => `
-    <section class="ai-cleanup-review-section" data-ai-cleanup-field="${escapeHtml(key)}">
-      <h4>${escapeHtml(label)}</h4>
-      <p class="ai-cleanup-review-explanation">${escapeHtml(getAiCleanupReviewExplanation({ key, label, type }, review))}</p>
-      <div class="ai-cleanup-review-grid">
-        <div class="ai-cleanup-review-column">
-          <span class="ai-cleanup-review-label">Current</span>
-          <div class="ai-cleanup-review-value">${renderAiCleanupReviewValue(type, review.current[key])}</div>
-        </div>
-        <div class="ai-cleanup-review-column">
-          <span class="ai-cleanup-review-label">Proposed</span>
-          <div class="ai-cleanup-review-value">${renderAiCleanupReviewValue(type, review.proposed[key])}</div>
-        </div>
-      </div>
-    </section>
-  `).join("");
+  review.changes.forEach(({ key, label, type }) => {
+    const section = createElement("section", {
+      className: "ai-cleanup-review-section",
+      dataset: { aiCleanupField: key }
+    });
+    section.appendChild(createElement("h4", { text: label }));
+    section.appendChild(createElement("p", {
+      className: "ai-cleanup-review-explanation",
+      text: getAiCleanupReviewExplanation({ key, label, type }, review)
+    }));
+    const grid = createElement("div", { className: "ai-cleanup-review-grid" });
+    [
+      { label: "Current", value: review.current[key] },
+      { label: "Proposed", value: review.proposed[key] }
+    ].forEach((column) => {
+      const columnEl = createElement("div", { className: "ai-cleanup-review-column" });
+      columnEl.appendChild(createElement("span", {
+        className: "ai-cleanup-review-label",
+        text: column.label
+      }));
+      const valueEl = createElement("div", { className: "ai-cleanup-review-value" });
+      appendAiCleanupReviewValue(valueEl, type, column.value);
+      columnEl.appendChild(valueEl);
+      grid.appendChild(columnEl);
+    });
+    section.appendChild(grid);
+    aiCleanupReviewChanges.appendChild(section);
+  });
+}
+
+function renderAiCleanupReview(review) {
+  return renderAiCleanupReviewWithDom(review);
 }
 
 function showAiCleanupReview(review) {

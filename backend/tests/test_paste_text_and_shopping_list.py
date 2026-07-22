@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -181,6 +182,38 @@ def test_parse_pasted_recipe_text_detects_ingredient_section_headings_for_jambal
     assert "Seasonings" not in parsed["ingredients"]
     assert "For the Chicken" not in parsed["ingredients"]
     assert "For the Pot" not in parsed["ingredients"]
+
+
+def test_parse_pasted_recipe_text_handles_house_jambalaya_fixture_with_long_metadata_spacing_quickly():
+    raw_text, expected = _load_paste_text_fixture()
+    repeated_space = " " * 4000
+    noisy_text = (
+        raw_text.replace(
+            "1 lb andouille sausage, sliced into rounds",
+            f"1 lb{repeated_space}andouille sausage, sliced into rounds",
+            1,
+        ).replace(
+            "1 lb shrimp, peeled and deveined",
+            f"1 lb{repeated_space}shrimp, peeled and deveined",
+            1,
+        )
+    )
+
+    started = time.perf_counter()
+    parsed = main._parse_pasted_recipe_text(noisy_text)
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 1.0
+    assert parsed["title"] == expected["title"]
+    assert parsed["servings"] == expected["servings"]
+    assert parsed["ingredient_groups"][0]["title"] == "Meat"
+    assert "1 lb andouille sausage" in parsed["ingredients"][0]
+
+
+def test_clean_text_strips_balanced_tags_but_preserves_unmatched_angle_brackets():
+    cleaned = main._clean_text("<div>House Jambalaya</div> <span>Prep</span> < not a tag")
+
+    assert cleaned == "House Jambalaya Prep < not a tag"
 
 
 def test_parse_pasted_recipe_text_does_not_treat_legitimate_short_ingredients_as_section_headings():

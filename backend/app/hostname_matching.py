@@ -2,9 +2,18 @@ from __future__ import annotations
 
 from urllib.parse import urlparse
 
+NETSCAPE_HTTPONLY_PREFIX = "#httponly_"
+
 
 def normalize_hostname(hostname: str | None) -> str:
-    return (hostname or "").strip().rstrip(".").lower()
+    return (hostname or "").strip().lstrip(".").rstrip(".").lower()
+
+
+def normalize_netscape_cookie_domain(domain_field: str | None) -> str:
+    normalized = (domain_field or "").strip()
+    if normalized.lower().startswith(NETSCAPE_HTTPONLY_PREFIX):
+        normalized = normalized[len(NETSCAPE_HTTPONLY_PREFIX) :]
+    return normalize_hostname(normalized)
 
 
 def hostname_matches_domain(hostname: str | None, expected_domain: str) -> bool:

@@ -539,13 +539,28 @@ test('saved AI cleanup review ignores suspicious single-letter unit fragments in
 test('recipe text stays inert across recipe detail and AI cleanup review rendering', async ({ page }, testInfo) => {
   const log = (message: string) => console.log(`[ai-cleanup-review:${testInfo.title}] ${message}`);
   const seed = `${testInfo.workerIndex}-${Date.now()}`;
+  const suspiciousRequests: string[] = [];
+  let dialogTriggered = false;
+  page.on('dialog', async (dialog) => {
+    dialogTriggered = true;
+    await dialog.dismiss();
+  });
+  page.on('request', (request) => {
+    const url = request.url();
+    if (url.includes('/x') || url.includes('__recipeXss')) {
+      suspiciousRequests.push(url);
+    }
+  });
+  const initialUrl = page.url();
   const recipe = {
     ...buildRecipe(seed),
-    title: `Literal <script>window.__recipeXss = 'title'</script> ${seed}`,
+    title: `Literal <<script>window.__recipeXss = 'title'</script> ${seed}`,
     notes: [
       `First line <img src=x onerror="window.__recipeXss='notes'">`,
-      'Second line &lt;strong&gt;keep whisking&lt;/strong&gt;'
+      'Second line &lt;strong&gt;keep whisking&lt;/strong&gt;',
+      'Broken tag <<svg/onload=window.__recipeXss="broken-note">'
     ].join('\n'),
+    tags: `dessert, <img src=x onerror="window.__recipeXss='tag'">, &lt;tag&gt;`,
     ingredient_groups: [
       {
         title: 'Sauce <svg onload="window.__recipeXss=\'group\'"></svg>',
@@ -632,6 +647,28 @@ test('recipe text stays inert across recipe detail and AI cleanup review renderi
   await expect(page.locator('#detail-instructions')).toContainText('Fold in chips');
   expect(await page.evaluate(() => (window as Window & { __recipeXss?: string }).__recipeXss ?? null)).toBeNull();
   expect(await page.locator('#recipe-detail-view script, #recipe-detail-view svg, #recipe-detail-view img[onerror]').count()).toBe(0);
+  expect(page.url()).toBe(initialUrl);
+
+  await page.locator('#detail-edit-button').click();
+  await expect(page.locator('#add-recipe-modal')).toBeVisible();
+  await expect(page.locator('#title')).toHaveValue(recipe.title);
+  await expect(page.locator('#notes')).toHaveValue(recipe.notes);
+  await expect(page.locator('#tags')).toHaveValue(recipe.tags);
+  await expect(page.locator('[data-ingredient-input="0"]')).toHaveValue('Sauce');
+  const ingredientEditValue = await page.locator('[data-ingredient-input="1"]').inputValue();
+  expect(ingredientEditValue).toContain('1 cup sugar');
+  expect(ingredientEditValue).not.toContain('<img');
+  const instructionSectionValue = await page.locator('[data-instruction-input="0"]').inputValue();
+  expect(instructionSectionValue).toContain('Steps');
+  expect(instructionSectionValue).toContain('window.__recipeXss = "steps"');
+  expect(instructionSectionValue).not.toContain('<script');
+  const instructionEditValue = await page.locator('[data-instruction-input="1"]').inputValue();
+  expect(instructionEditValue).toContain('Mix');
+  expect(instructionEditValue).not.toContain('<svg');
+  expect(await page.locator('#add-recipe-modal script, #add-recipe-modal svg, #add-recipe-modal img[onerror]').count()).toBe(0);
+  expect(await page.evaluate(() => (window as Window & { __recipeXss?: string }).__recipeXss ?? null)).toBeNull();
+  await page.locator('#close-add-recipe-button').click();
+  await expect(page.locator('#add-recipe-modal')).toBeHidden();
 
   await page.locator('#detail-ai-cleanup-button').click();
 
@@ -645,6 +682,7 @@ test('recipe text stays inert across recipe detail and AI cleanup review renderi
   await expect(page.locator('[data-ai-cleanup-field="instruction_groups"]')).toContainText('Mix');
   expect(await page.locator('#ai-cleanup-review-modal script, #ai-cleanup-review-modal svg, #ai-cleanup-review-modal img[onerror]').count()).toBe(0);
   expect(await page.evaluate(() => (window as Window & { __recipeXss?: string }).__recipeXss ?? null)).toBeNull();
+  expect(page.url()).toBe(initialUrl);
 
   await page.locator('#accept-ai-cleanup-review-button').click();
 
@@ -657,6 +695,9 @@ test('recipe text stays inert across recipe detail and AI cleanup review renderi
   await expect(page.locator('#detail-instructions')).toContainText('Mix');
   expect(await page.locator('#recipe-detail-view script, #recipe-detail-view svg, #recipe-detail-view img[onerror]').count()).toBe(0);
   expect(await page.evaluate(() => (window as Window & { __recipeXss?: string }).__recipeXss ?? null)).toBeNull();
+  expect(page.url()).toBe(initialUrl);
+  expect(dialogTriggered).toBe(false);
+  expect(suspiciousRequests).toEqual([]);
 
   const savedRecipe = await fetchRecipeFromList(page, recipeId);
   expect(savedRecipe.title).toBe(preview.title);

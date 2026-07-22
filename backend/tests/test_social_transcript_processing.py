@@ -9,6 +9,7 @@ from backend.app.social_video_pipeline import (
     download_social_media_with_ytdlp,
     merge_and_clean_ingredients,
 )
+from backend.app.hostname_matching import hostname_matches_domain
 
 
 def test_clean_transcript_for_recipe_removes_phone_and_promo_chatter():
@@ -133,7 +134,8 @@ def test_download_social_media_with_ytdlp_uses_db_cookie_temp_file_and_cleans_up
             attempts.append(options)
             if options.get("cookiefile"):
                 cookie_path_holder["path"] = options["cookiefile"]
-                assert "facebook.com" in open(options["cookiefile"], "r", encoding="utf-8").read()
+                cookie_domain = open(options["cookiefile"], "r", encoding="utf-8").read().split("\t", 1)[0]
+                assert hostname_matches_domain(cookie_domain, "facebook.com")
 
         def __enter__(self):
             return self
