@@ -21,9 +21,9 @@ from types import SimpleNamespace
 from bs4 import BeautifulSoup
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-import urllib.request
-from urllib.request import urlopen
 from urllib.parse import urlparse, parse_qs, parse_qsl, quote_plus, unquote, urljoin, urlencode, urlunparse
+from .html_sanitization import extract_json_ld_payloads, extract_visible_text
+from .hostname_matching import hostname_matches_any, parse_hostname, url_hostname_matches_any
 from .social_resolver import is_valid_social_destination_url, resolve_social_url
 from .social_video_pipeline import (
     TranscriptPipelineResult,
@@ -31,6 +31,7 @@ from .social_video_pipeline import (
     YtDlpExtractError,
     run_social_video_transcript_pipeline,
 )
+from .url_validation import PublicUrlValidationError, USER_FACING_PUBLIC_URL_ERROR, safe_get, validate_public_url
 
 SETTINGS_ENCRYPTION_KEY_ENV = "USER_SETTINGS_ENCRYPTION_KEY"
 
@@ -38,6 +39,7 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 PYTHON_MULTIPART_INSTALLED = importlib.util.find_spec("multipart") is not None
+INTERNAL_SERVER_ERROR_MESSAGE = "Internal server error"
 
 
 def _parse_bool(value: str | None, default: bool = False) -> bool:
@@ -71,6 +73,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def attach_correlation_id(request: Request, call_next):
+    incoming = str(request.headers.get("X-Request-ID", "") or "").strip()
+    request.state.correlation_id = incoming[:128] if incoming else _new_correlation_id()
+    response = await call_next(request)
+    response.headers.setdefault("X-Correlation-ID", request.state.correlation_id)
+    return response
+
 DB = os.getenv("RECIPES_DB_PATH", "/app/data/recipes.db")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "").rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3:latest")
@@ -96,6 +107,35 @@ def utcnow() -> datetime:
 
 def utcnow_iso() -> str:
     return utcnow().isoformat()
+
+
+def _new_correlation_id() -> str:
+    return secrets.token_hex(8)
+
+
+def _request_correlation_id(request: Request) -> str:
+    existing = getattr(request.state, "correlation_id", "")
+    if existing:
+        return existing
+    request.state.correlation_id = _new_correlation_id()
+    return request.state.correlation_id
+
+
+def _json_error_response(
+    request: Request,
+    *,
+    status_code: int,
+    detail,
+    correlation_id: str | None = None,
+    headers: dict[str, str] | None = None,
+) -> JSONResponse:
+    active_correlation_id = correlation_id or _request_correlation_id(request)
+    content = {"detail": detail}
+    if status_code >= 500:
+        content["correlation_id"] = active_correlation_id
+    response = JSONResponse(status_code=status_code, content=content, headers=headers)
+    response.headers["X-Correlation-ID"] = active_correlation_id
+    return response
 
 
 AUTH_LOCKOUT_ENABLED_KEY = "auth_lockout_enabled"
@@ -667,6 +707,11 @@ REQUEST_HEADERS = {
 }
 
 MAX_AI_CLEANUP_SOURCE_CHARS = 8000
+MAX_RECIPE_HTML_CHARS = 1_000_000
+MAX_REGEX_TEXT_CHARS = 8_000
+MAX_DURATION_TEXT_CHARS = 128
+MAX_INGREDIENT_LINE_CHARS = 32768
+MAX_INGREDIENT_GROUP_TITLE_CHARS = 120
 ALLOWED_IMAGE_MIME_TYPES = {
     "image/jpeg",
     "image/jpg",
@@ -719,17 +764,11 @@ RAW_HTML_SOCIAL_CANDIDATE_THRESHOLD = float(os.getenv("RAW_HTML_SOCIAL_CANDIDATE
 
 
 def _host_matches(host: str, candidates: tuple[str, ...]) -> bool:
-    normalized = (host or "").lower().strip()
-    if not normalized:
-        return False
-    return any(normalized == candidate or normalized.endswith(f".{candidate}") for candidate in candidates)
+    return hostname_matches_any(host, candidates)
 
 
 def _is_social_share_url(url: str) -> bool:
-    try:
-        host = urlparse(url).netloc.lower()
-    except Exception:
-        return False
+    host = parse_hostname(url)
     return _host_matches(host, ("facebook.com", "fb.watch", "instagram.com", "instagr.am"))
 
 
@@ -738,7 +777,7 @@ def _is_facebook_share_or_reel_url(url: str) -> bool:
         parsed = urlparse(url or "")
     except Exception:
         return False
-    host = (parsed.netloc or "").lower().strip()
+    host = parse_hostname(url)
     if not _host_matches(host, ("facebook.com",)):
         return False
     path = (parsed.path or "").lower()
@@ -830,9 +869,7 @@ def _extract_html_title(html: str) -> str:
 
 
 def _extract_visible_text_snippets(html: str, max_items: int = 3) -> list[str]:
-    cleaned = re.sub(r"<script[^>]*>.*?</script>", " ", html or "", flags=re.IGNORECASE | re.DOTALL)
-    cleaned = re.sub(r"<style[^>]*>.*?</style>", " ", cleaned, flags=re.IGNORECASE | re.DOTALL)
-    text = _clean_text(cleaned)
+    text = _clean_text(extract_visible_text(html or ""))
     if not text:
         return []
     parts = re.split(r"[.!?\n]", text)
@@ -1139,9 +1176,8 @@ def _discover_recipe_url_from_social_hints(original_url: str, hints: dict) -> di
 
     candidates: list[dict] = []
     try:
-        response = requests.get(
-            "https://html.duckduckgo.com/html/",
-            params={"q": query},
+        response = safe_get(
+            "https://html.duckduckgo.com/html/?" + urlencode({"q": query}),
             timeout=8,
             headers=REQUEST_HEADERS,
         )
@@ -1223,14 +1259,8 @@ def resolve_social_recipe_source(url: str) -> dict:
         REQUEST_HEADERS,
         redirect_follow_attempted,
     )
-    session = requests.Session()
     try:
-        response = session.get(
-            url,
-            allow_redirects=redirect_follow_attempted,
-            timeout=8,
-            headers=REQUEST_HEADERS,
-        )
+        response = safe_get(url, timeout=8, headers=REQUEST_HEADERS)
         final_response_url = str(response.url or "").strip()
         response_html = response.text or ""
     except Exception as exc:
@@ -1382,16 +1412,9 @@ def resolve_url(url: str) -> str:
     if not url:
         return url
 
-    session = requests.Session()
     try:
-        r = session.get(
-            url,
-            allow_redirects=True,
-            timeout=8,
-            headers=REQUEST_HEADERS,
-        )
+        r = safe_get(url, headers=REQUEST_HEADERS, timeout=8)
         resolved = str(r.url)
-
         return resolved
     except Exception:
         return url
@@ -1436,33 +1459,31 @@ def normalize_shared_url(url: str) -> str:
 
 
 def infer_source(url: str) -> tuple[str, str]:
-    value = (url or "").lower()
-    if "instagram.com" in value or "instagr.am" in value:
+    if url_hostname_matches_any(url, ("instagram.com", "instagr.am")):
         return "Instagram", "Instagram"
-    if "facebook.com" in value or "fb.watch" in value:
+    if url_hostname_matches_any(url, ("facebook.com", "fb.watch")):
         return "Facebook", "Facebook"
-    if "youtube.com" in value or "youtu.be" in value:
+    if url_hostname_matches_any(url, ("youtube.com", "youtu.be")):
         return "YouTube", "YouTube"
-    if "tiktok.com" in value:
+    if url_hostname_matches_any(url, ("tiktok.com",)):
         return "TikTok", "TikTok"
-    if "pinterest.com" in value or "pin.it" in value:
+    if url_hostname_matches_any(url, ("pinterest.com", "pin.it")):
         return "Pinterest", "Pinterest"
-    if "allrecipes.com" in value:
+    if url_hostname_matches_any(url, ("allrecipes.com",)):
         return "AllRecipes", "Web"
-    if "foodnetwork.com" in value:
+    if url_hostname_matches_any(url, ("foodnetwork.com",)):
         return "Food Network", "Web"
-    if "delish.com" in value:
+    if url_hostname_matches_any(url, ("delish.com",)):
         return "Delish", "Web"
-    if value:
+    if str(url or "").strip():
         return "Browser", "Web"
     return "", ""
 
 
 def _detect_submission_source_type(url: str) -> str:
-    value = (url or "").lower()
-    if "facebook.com" in value or "fb.watch" in value:
+    if url_hostname_matches_any(url, ("facebook.com", "fb.watch")):
         return "facebook"
-    if "instagram.com" in value or "instagr.am" in value:
+    if url_hostname_matches_any(url, ("instagram.com", "instagr.am")):
         return "instagram"
     return "normal"
 
@@ -1592,7 +1613,7 @@ def _strip_social_caption_noise(text: str) -> str:
 
 
 def _split_instruction_sentences(text: str) -> list[str]:
-    value = _clean_text(text)
+    value = _clean_text(text)[:MAX_REGEX_TEXT_CHARS]
     if not value:
         return []
     value = re.sub(
@@ -1716,6 +1737,219 @@ INGREDIENT_FOODISH_WORD_RE = re.compile(
 )
 
 
+_AI_HEADER_LABEL_NAMES = {
+    "lean",
+    "leaner",
+    "leanest",
+    "green",
+    "healthy fat",
+    "healthy fats",
+    "condiment",
+    "condiments",
+    "fueling",
+    "fuelings",
+    "lean and green",
+}
+_EMBEDDED_INGREDIENT_PREPARATIONS = {"diced", "chopped", "minced", "sliced", "crushed"}
+_EMBEDDED_INGREDIENT_NOUNS = {
+    ("onion",),
+    ("onions",),
+    ("carrot",),
+    ("carrots",),
+    ("celery",),
+    ("celery", "stalk"),
+    ("celery", "stalks"),
+    ("garlic",),
+    ("garlic", "clove"),
+    ("garlic", "cloves"),
+}
+_PASTED_SERVINGS_LABELS = ("serving", "servings", "serves")
+_PASTED_PREP_LABELS = ("prep time", "preparation time")
+_PASTED_COOK_LABELS = ("cook time", "cooking time")
+_PASTED_TOTAL_LABELS = ("total time",)
+
+
+def _collapse_space_before_periods(text: str) -> str:
+    if "." not in text:
+        return text
+    cleaned_chars: list[str] = []
+    for char in text:
+        if char == ".":
+            while cleaned_chars and cleaned_chars[-1].isspace():
+                cleaned_chars.pop()
+        cleaned_chars.append(char)
+    return "".join(cleaned_chars)
+
+
+def _remove_orphan_word_periods(text: str) -> str:
+    if "." not in text:
+        return text
+    chars = list(text)
+    result: list[str] = []
+    for index, char in enumerate(chars):
+        if char != ".":
+            result.append(char)
+            continue
+
+        left_index = index - 1
+        letter_count = 0
+        while left_index >= 0 and chars[left_index].isalpha():
+            letter_count += 1
+            left_index -= 1
+
+        right_index = index + 1
+        saw_space = False
+        while right_index < len(chars) and chars[right_index].isspace():
+            saw_space = True
+            right_index += 1
+
+        if letter_count >= 4 and saw_space and right_index < len(chars) and (chars[right_index].isalnum() or chars[right_index] == "_"):
+            continue
+        result.append(char)
+    return "".join(result)
+
+
+def _split_text_on_delimiters(text: str, delimiters: tuple[str, ...]) -> list[str]:
+    parts: list[str] = []
+    current: list[str] = []
+    index = 0
+    while index < len(text):
+        matched = None
+        for delimiter in delimiters:
+            if text.startswith(delimiter, index):
+                matched = delimiter
+                break
+        if matched is not None:
+            part = "".join(current).strip()
+            if part:
+                parts.append(part)
+            current = []
+            index += len(matched)
+            continue
+        current.append(text[index])
+        index += 1
+    part = "".join(current).strip()
+    if part:
+        parts.append(part)
+    return parts
+
+
+def _is_ai_header_label_line(value: str) -> bool:
+    tokens = value.lower().split()
+    if not tokens:
+        return False
+    if tokens[0].isdigit():
+        tokens = tokens[1:]
+    return " ".join(tokens) in _AI_HEADER_LABEL_NAMES
+
+
+def _looks_like_ai_ingredient_amount(value: str) -> bool:
+    quantity, _ = _parse_ingredient_quantity(value)
+    return quantity is not None
+
+
+def _looks_like_embedded_simple_ingredient(value: str) -> bool:
+    candidate = _clean_ingredient_candidate(value)
+    if not candidate:
+        return False
+    quantity, remainder = _parse_ingredient_quantity(candidate)
+    if quantity is None or not remainder:
+        return False
+
+    tokens = [token.strip(".,:;()").lower() for token in remainder.split()]
+    tokens = [token for token in tokens if token]
+    if not tokens:
+        return False
+    if tokens[0] in _EMBEDDED_INGREDIENT_PREPARATIONS:
+        tokens = tokens[1:]
+    return tuple(tokens) in _EMBEDDED_INGREDIENT_NOUNS
+
+
+def _extract_embedded_simple_ingredient_phrases(value: str) -> list[str]:
+    candidate = _clean_ingredient_candidate(value)
+    if not candidate:
+        return []
+
+    raw_tokens = candidate.split()
+    matches: list[str] = []
+    for index in range(len(raw_tokens)):
+        segment = " ".join(raw_tokens[index:])
+        quantity, remainder = _parse_ingredient_quantity(segment)
+        if quantity is None or not remainder:
+            continue
+
+        remainder_tokens = [token.strip(".,:;()").lower() for token in remainder.split()]
+        remainder_tokens = [token for token in remainder_tokens if token]
+        if not remainder_tokens:
+            continue
+
+        phrase_tokens = [_format_display_quantity(quantity)]
+        noun_tokens = remainder_tokens
+        if remainder_tokens[0] in _EMBEDDED_INGREDIENT_PREPARATIONS:
+            phrase_tokens.append(remainder_tokens[0])
+            noun_tokens = remainder_tokens[1:]
+
+        noun_tuple = None
+        for candidate_noun in sorted(_EMBEDDED_INGREDIENT_NOUNS, key=len, reverse=True):
+            if tuple(noun_tokens[: len(candidate_noun)]) == candidate_noun:
+                noun_tuple = candidate_noun
+                break
+        if noun_tuple is None:
+            continue
+
+        phrase_tokens.extend(noun_tuple)
+        phrase = " ".join(token for token in phrase_tokens if token).strip()
+        if phrase:
+            matches.append(phrase)
+
+    return _dedupe_text_entries(matches)
+
+
+def _looks_like_quantity_or_unit_prefix(value: str) -> bool:
+    candidate = _clean_ingredient_candidate(value)
+    if not candidate:
+        return False
+    quantity, remainder = _parse_ingredient_quantity(candidate)
+    if quantity is not None:
+        remainder = remainder.lstrip()
+        if remainder.lower().startswith("x "):
+            remainder = remainder[2:].lstrip()
+        token = remainder.split(None, 1)[0].rstrip(".,:;").lower() if remainder else ""
+        return token in _INGREDIENT_UNIT_ALIASES or token in {"pinch", "handful", "clove", "cloves"}
+    token = candidate.split(None, 1)[0].rstrip(".,:;").lower()
+    return token in _INGREDIENT_UNIT_ALIASES or token in {"pinch", "handful", "clove", "cloves"}
+
+
+def _contains_measurement(value: str) -> bool:
+    candidate = _clean_ingredient_candidate(value)
+    if not candidate:
+        return False
+    tokens = candidate.split()
+    for index, token in enumerate(tokens):
+        normalized = token.strip(".,:;()").lower()
+        if normalized not in _INGREDIENT_UNIT_ALIASES or index == 0:
+            continue
+        prefix = " ".join(tokens[max(0, index - 2):index])
+        quantity, remainder = _parse_ingredient_quantity(prefix)
+        if quantity is not None and not remainder:
+            return True
+    return False
+
+
+def _extract_labeled_metadata_value(value: str, labels: tuple[str, ...]) -> str | None:
+    candidate = _clean_text(value)
+    lowered = candidate.lower()
+    for label in sorted(labels, key=len, reverse=True):
+        if not lowered.startswith(label):
+            continue
+        remainder = candidate[len(label):].lstrip()
+        if not remainder or remainder[0] not in ":-":
+            continue
+        extracted = _clean_text(remainder[1:])
+        return extracted or None
+    return None
+
+
 def _clean_ingredient_candidate(text: str) -> str:
     cleaned = _clean_text(text).strip(" -•*")
     cleaned = re.sub(r"^(?:add|mix in|stir in|top with)\s+", "", cleaned, flags=re.IGNORECASE)
@@ -1741,11 +1975,6 @@ def _should_keep_short_unmeasured_ingredient_line(candidate: str) -> bool:
 
 
 def _extract_ingredient_candidates_from_text(lines: list[str], text: str) -> list[str]:
-    quantity_re = re.compile(
-        r"^\s*(?:[-•*]\s*)?(?:\d+(?:[\.,]\d+)?(?:/\d+)?\s*)?(?:x\s*)?(?:"
-        r"g|grams?|kg|ml|l|tbsp|tsp|cups?|oz|lb|cloves?|pinch|handful)\b",
-        flags=re.IGNORECASE,
-    )
     ingredients: list[str] = []
     for line in lines:
         cleaned = _clean_ingredient_candidate(line)
@@ -1754,28 +1983,21 @@ def _extract_ingredient_candidates_from_text(lines: list[str], text: str) -> lis
         lowered = cleaned.lower()
         if any(lowered.startswith(prefix) for prefix in ("method", "instructions", "directions", "steps")):
             continue
-        if quantity_re.search(cleaned) or re.search(r"\b\d+(?:[\.,]\d+)?\s*(?:g|ml|tbsp|tsp|cups?)\b", cleaned, re.IGNORECASE):
+        if _looks_like_quantity_or_unit_prefix(cleaned) or _contains_measurement(cleaned):
             ingredients.append(cleaned)
             continue
         if _should_keep_short_unmeasured_ingredient_line(cleaned):
             ingredients.append(cleaned)
 
     if len(ingredients) < 2:
-        phrase_candidates = re.split(r"[,\n;]", text)
+        phrase_candidates = _split_text_on_delimiters(text, (",", "\n", ";"))
         for phrase in phrase_candidates:
             cleaned = _clean_ingredient_candidate(phrase)
-            if re.search(r"\b\d+(?:[\.,]\d+)?\s*(?:g|ml|tbsp|tsp|cups?)\b", cleaned, re.IGNORECASE):
+            if _contains_measurement(cleaned):
                 ingredients.append(cleaned)
 
-    embedded_pattern = re.compile(
-        r"\b\d+(?:[\.,]\d+)?\s+(?:diced|chopped|minced|sliced|crushed)?\s*"
-        r"(?:onions?|carrots?|celery(?:\s+stalks?)?|garlic(?:\s+cloves?)?)\b",
-        flags=re.IGNORECASE,
-    )
-    for match in embedded_pattern.finditer(text):
-        cleaned = _clean_ingredient_candidate(match.group(0))
-        if cleaned:
-            ingredients.append(cleaned)
+    for phrase in _split_text_on_delimiters(text, (",", "\n", ";")):
+        ingredients.extend(_extract_embedded_simple_ingredient_phrases(phrase))
 
     extra_match = re.search(r"\bextra\s+(?:cheddar|chedder)\b", text, flags=re.IGNORECASE)
     if extra_match:
@@ -2012,21 +2234,21 @@ def _parse_pasted_recipe_text(raw_text: str) -> dict:
             note_heading = line.rstrip(":").strip()
             continue
 
-        servings_match = re.match(r"^servings?\s*[:\-]\s*(.+)$", line, flags=re.IGNORECASE)
-        if servings_match:
-            servings = _clean_text(servings_match.group(1))
+        servings_value = _extract_labeled_metadata_value(line, _PASTED_SERVINGS_LABELS)
+        if servings_value:
+            servings = servings_value
             continue
-        prep_match = re.match(r"^prep(?:aration)?\s*time\s*[:\-]\s*(.+)$", line, flags=re.IGNORECASE)
-        if prep_match:
-            prep_time = _clean_text(prep_match.group(1))
+        prep_value = _extract_labeled_metadata_value(line, _PASTED_PREP_LABELS)
+        if prep_value:
+            prep_time = prep_value
             continue
-        cook_match = re.match(r"^cook(?:ing)?\s*time\s*[:\-]\s*(.+)$", line, flags=re.IGNORECASE)
-        if cook_match:
-            cook_time = _clean_text(cook_match.group(1))
+        cook_value = _extract_labeled_metadata_value(line, _PASTED_COOK_LABELS)
+        if cook_value:
+            cook_time = cook_value
             continue
-        total_match = re.match(r"^total\s*time\s*[:\-]\s*(.+)$", line, flags=re.IGNORECASE)
-        if total_match:
-            total_time = _clean_text(total_match.group(1))
+        total_value = _extract_labeled_metadata_value(line, _PASTED_TOTAL_LABELS)
+        if total_value:
+            total_time = total_value
             continue
 
         if not title and not current_section:
@@ -2453,11 +2675,11 @@ def _validate_recipe_page_and_parse(url: str) -> tuple[bool, dict]:
     if not normalized_url:
         return False, {}
     try:
-        response = requests.get(normalized_url, headers=REQUEST_HEADERS, timeout=8)
+        response = safe_get(normalized_url, headers=REQUEST_HEADERS, timeout=8)
         response.raise_for_status()
         if "text/html" not in str(response.headers.get("Content-Type", "")).lower():
             return False, {}
-        html = response.text or ""
+        html = _bounded_text(response.text or "", MAX_RECIPE_HTML_CHARS)
     except Exception:
         return False, {}
 
@@ -2504,7 +2726,7 @@ def _recover_recipe_url_from_social_signals(
     for host in hosts:
         search_url = f"https://{host}/?s={quote_plus(title_hint)}"
         try:
-            response = requests.get(search_url, headers=REQUEST_HEADERS, timeout=8)
+            response = safe_get(search_url, headers=REQUEST_HEADERS, timeout=8)
             response.raise_for_status()
             html = response.text or ""
         except Exception:
@@ -2525,9 +2747,8 @@ def _recover_recipe_url_from_social_signals(
     if debug_trace is not None:
         debug_trace["external_search_query"] = query
     try:
-        response = requests.get(
-            "https://duckduckgo.com/html/",
-            params={"q": query},
+        response = safe_get(
+            "https://duckduckgo.com/html/?" + urlencode({"q": query}),
             headers=REQUEST_HEADERS,
             timeout=8,
         )
@@ -2709,7 +2930,7 @@ def _recover_recipe_url_from_transcript_mentions(
         for host in hosts:
             search_url = f"https://{host}/?s={quote_plus(cleaned_title_hint)}"
             try:
-                response = requests.get(search_url, headers=REQUEST_HEADERS, timeout=8)
+                response = safe_get(search_url, headers=REQUEST_HEADERS, timeout=8)
                 response.raise_for_status()
                 html = response.text or ""
             except Exception:
@@ -2751,9 +2972,8 @@ def _recover_recipe_url_from_transcript_mentions(
     elif ingredient_terms:
         query = f"{query} {' '.join(ingredient_terms[:3])}"
     try:
-        response = requests.get(
-            "https://duckduckgo.com/html/",
-            params={"q": query},
+        response = safe_get(
+            "https://duckduckgo.com/html/?" + urlencode({"q": query}),
             headers=REQUEST_HEADERS,
             timeout=8,
         )
@@ -2786,12 +3006,12 @@ def _recover_recipe_url_from_transcript_mentions(
 
 def fetch_title_from_url(url: str) -> str:
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urlopen(req, timeout=8) as response:
-            content_type = response.headers.get("Content-Type", "")
-            if "text/html" not in content_type.lower():
-                return ""
-            html = response.read(200000).decode("utf-8", errors="ignore")
+        response = safe_get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+        response.raise_for_status()
+        content_type = response.headers.get("Content-Type", "")
+        if "text/html" not in content_type.lower():
+            return ""
+        html = (response.text or "")[:200000]
     except Exception:
         return ""
 
@@ -2803,18 +3023,10 @@ def fetch_title_from_url(url: str) -> str:
 
 def extract_json_ld_blocks(html: str) -> list[dict]:
     blocks: list[dict] = []
-    scripts = re.findall(
-        r"<script[^>]*type=[\"'][^\"']*application/ld\+json[^\"']*[\"'][^>]*>(.*?)</script>",
-        html,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
 
-    for script_content in scripts:
-        payload = script_content.strip()
+    for payload in extract_json_ld_payloads(html):
         if not payload:
             continue
-        payload = re.sub(r"^\s*<!--|-->\s*$", "", payload).strip()
-        payload = re.sub(r"^\s*<!\[CDATA\[|\]\]>\s*$", "", payload).strip()
         try:
             parsed = json.loads(payload)
         except Exception:
@@ -3928,10 +4140,7 @@ def _is_dom_ingredient_noise(text: str) -> bool:
 
 
 def _extract_dom_recipe_data(html: str) -> dict:
-    reduced = re.sub(r"<script\b[^>]*>.*?</script>", " ", html, flags=re.IGNORECASE | re.DOTALL)
-    reduced = re.sub(r"<style\b[^>]*>.*?</style>", " ", reduced, flags=re.IGNORECASE | re.DOTALL)
-    reduced = re.sub(r"<noscript\b[^>]*>.*?</noscript>", " ", reduced, flags=re.IGNORECASE | re.DOTALL)
-    scoped = _extract_recipe_scoped_html(reduced)
+    scoped = _extract_recipe_scoped_html(html)
 
     line_like = re.sub(
         r"</(li|p|div|h1|h2|h3|h4|h5|h6|span|dt|dd|tr|th|td|br)>",
@@ -4394,11 +4603,47 @@ def _has_named_and_unnamed_instruction_groups(groups: list[dict]) -> bool:
     return False
 
 
+def _count_instruction_prefix_expansions(instructions: list[str]) -> int:
+    normalized_instructions = [
+        _canonical_recipe_text(_clean_text(instruction))
+        for instruction in instructions
+        if _clean_text(instruction)
+    ]
+    expansion_count = 0
+    for index, instruction in enumerate(normalized_instructions):
+        if not instruction:
+            continue
+        for other_index, other_instruction in enumerate(normalized_instructions):
+            if index == other_index or not other_instruction:
+                continue
+            if len(instruction) <= len(other_instruction):
+                continue
+            if len(instruction) - len(other_instruction) < 8:
+                continue
+            if instruction.startswith(f"{other_instruction} "):
+                expansion_count += 1
+                break
+    return expansion_count
+
+
 def _wprm_richer_than_jsonld(wprm_candidate: dict, jsonld_candidate: dict) -> bool:
     if not wprm_candidate or not jsonld_candidate:
         return False
     wprm_counts = _recipe_parser_counts(wprm_candidate)
     jsonld_counts = _recipe_parser_counts(jsonld_candidate)
+    if (
+        jsonld_counts["ingredients"] >= 3
+        and wprm_counts["ingredients"] < jsonld_counts["ingredients"]
+        and (jsonld_counts["ingredients"] - wprm_counts["ingredients"]) >= 3
+    ):
+        return False
+    wprm_instruction_expansions = _count_instruction_prefix_expansions(wprm_candidate.get("instructions") or [])
+    if (
+        wprm_instruction_expansions > 0
+        and wprm_counts["instructions"] > jsonld_counts["instructions"]
+        and wprm_instruction_expansions >= (wprm_counts["instructions"] - jsonld_counts["instructions"])
+    ):
+        return False
     if wprm_counts["instruction_groups"] > jsonld_counts["instruction_groups"]:
         return True
     if (
@@ -5040,7 +5285,7 @@ def _build_ai_input_from_parsed_recipe(parsed_recipe: dict) -> str:
 
 
 def _fetch_html_for_ai_cleanup(url: str) -> str:
-    response = requests.get(url, headers=REQUEST_HEADERS, timeout=8)
+    response = safe_get(url, headers=REQUEST_HEADERS, timeout=8)
     response.raise_for_status()
     content_type = response.headers.get("Content-Type", "")
     if "text/html" not in content_type.lower():
@@ -6145,14 +6390,8 @@ def _normalize_plain_string_list(value) -> list[str]:
     for item in values:
         cleaned = _stringify_recipe_component(item, prefer_ingredient_order=True)
         cleaned = _normalize_spoken_ingredient_text(cleaned)
-
-        # Fix stray spacing before punctuation (e.g., "teaspoons . mustard")
-        cleaned = re.sub(r"\s+\.", ".", cleaned)
-
-        # Remove orphan periods between words (e.g., "teaspoons. mustard" → "teaspoons mustard")
-        cleaned = re.sub(r"([A-Za-z]{4,})\.(?=\s+\w)", r"\1", cleaned)
-
-        # Normalize extra spaces again after cleanup
+        cleaned = _collapse_space_before_periods(cleaned)
+        cleaned = _remove_orphan_word_periods(cleaned)
         cleaned = " ".join(cleaned.split())
         if cleaned:
             cleaned_items.append(cleaned)
@@ -6188,17 +6427,17 @@ def _is_non_ingredient_header_line(value: str) -> bool:
     if re.match(r"^(?:for the|to serve|for serving|optional(?: toppings?| garnish| finishers?)?)\b", lowered):
         return True
 
-    if re.fullmatch(r"(?:\d+\s+)?(?:lean(?:er|est)?|green|healthy\s+fat(?:s)?|condiment(?:s)?|fuelings?)", lowered):
+    if _is_ai_header_label_line(lowered):
         return True
 
     if ";" in candidate or " - " in candidate or " | " in candidate:
-        parts = [part.strip() for part in re.split(r"\s*(?:;| \- |\|)\s*", candidate) if part.strip()]
+        parts = _split_text_on_delimiters(candidate, (";", " - ", "|"))
         if len(parts) >= 2:
             trailing = " ".join(parts[1:])
             if _AI_INGREDIENT_HEADER_LABEL_PATTERN.search(trailing):
                 return True
 
-    if _AI_INGREDIENT_AMOUNT_PATTERN.search(candidate):
+    if _looks_like_ai_ingredient_amount(candidate):
         return False
 
     return False
@@ -6255,6 +6494,799 @@ def _sanitize_preview_ingredient_payload(payload: dict) -> dict:
     sanitized_payload["ingredient_groups"] = ingredient_groups
     sanitized_payload["ingredients"] = _flatten_groups(ingredient_groups, "items")
     return sanitized_payload
+
+
+def _bounded_text(value: str, limit: int) -> str:
+    return str(value or "")[: max(0, int(limit))]
+
+
+def _iter_all_nodes(root):
+    yield root
+    for child in getattr(root, "children", []) or []:
+        yield child
+        yield from _iter_all_nodes(child)
+
+
+def _node_class_tokens(node) -> set[str]:
+    class_value = ""
+    if hasattr(node, "attrs"):
+        class_value = str(node.attrs.get("class", "") or "")
+    return {token for token in re.split(r"\s+", class_value.strip()) if token}
+
+
+def _node_has_class_fragment(node, fragment: str) -> bool:
+    fragment_lower = fragment.lower()
+    return any(fragment_lower in token.lower() for token in _node_class_tokens(node))
+
+
+def _normalized_tag_name(node) -> str:
+    node_name = getattr(node, "name", None)
+    return node_name.lower() if isinstance(node_name, str) else ""
+
+
+def _iter_descendants_by_tag(root, tag_names: set[str]):
+    expected_tags = {tag.lower() for tag in tag_names if isinstance(tag, str)}
+    for node in _iter_all_nodes(root):
+        if _normalized_tag_name(node) in expected_tags:
+            yield node
+
+
+def _iter_descendants_by_class_fragments(root, fragments: tuple[str, ...], tag_names: set[str] | None = None):
+    expected_tags = {tag.lower() for tag in tag_names} if tag_names else None
+    for node in _iter_all_nodes(root):
+        if expected_tags and _normalized_tag_name(node) not in expected_tags:
+            continue
+        if any(_node_has_class_fragment(node, fragment) for fragment in fragments):
+            yield node
+
+
+def _iter_descendants_by_exact_class(root, class_names: set[str], tag_names: set[str] | None = None):
+    expected_tags = {tag.lower() for tag in tag_names} if tag_names else None
+    for node in _iter_all_nodes(root):
+        if expected_tags and _normalized_tag_name(node) not in expected_tags:
+            continue
+        tokens = _node_class_tokens(node)
+        if any(class_name in tokens for class_name in class_names):
+            yield node
+
+
+def _find_next_sibling_tag(parent, child, tag_names: set[str]):
+    siblings = list(getattr(parent, "children", []) or [])
+    seen_child = False
+    for sibling in siblings:
+        if sibling is child:
+            seen_child = True
+            continue
+        if not seen_child:
+            continue
+        if _normalized_tag_name(sibling) in tag_names:
+            return sibling
+    return None
+
+
+def _extract_parenthetical_notes(value: str) -> tuple[str, list[str]]:
+    notes: list[str] = []
+    base_chars: list[str] = []
+    depth = 0
+    current_note: list[str] = []
+
+    for char in _clean_text(value):
+        if char == "(":
+            if depth == 0:
+                current_note = []
+            else:
+                current_note.append(char)
+            depth += 1
+            continue
+        if char == ")" and depth > 0:
+            depth -= 1
+            if depth == 0:
+                note_text = _clean_text("".join(current_note))
+                if note_text:
+                    notes.append(note_text)
+                continue
+            current_note.append(char)
+            continue
+        if depth > 0:
+            current_note.append(char)
+        else:
+            base_chars.append(char)
+
+    stripped = " ".join("".join(base_chars).split())
+    return stripped, notes
+
+
+def _parse_ingredient_core(text: str) -> tuple[float | None, str | None, str, list[str]]:
+    working, notes = _extract_parenthetical_notes(_bounded_text(text, MAX_INGREDIENT_LINE_CHARS))
+    quantity, remainder = _parse_ingredient_quantity(working)
+    unit = None
+    remainder_after_unit = remainder
+    unit_match = re.match(r"^([a-zA-Z]+)\b", remainder)
+    if unit_match:
+        normalized_unit = _INGREDIENT_UNIT_ALIASES.get(unit_match.group(1).lower())
+        if normalized_unit:
+            unit = normalized_unit
+            remainder_after_unit = remainder[unit_match.end():].strip()
+    name = re.sub(r"^of\s+", "", remainder_after_unit, flags=re.IGNORECASE).strip()
+    return quantity, unit, name, notes
+
+
+def extract_json_ld_blocks(html: str) -> list[dict]:
+    blocks: list[dict] = []
+    seen_payloads: set[str] = set()
+    for payload in extract_json_ld_payloads(_bounded_text(html, MAX_RECIPE_HTML_CHARS)):
+        if not payload:
+            continue
+        try:
+            parsed = json.loads(payload)
+        except Exception:
+            continue
+        signature = json.dumps(parsed, sort_keys=True, ensure_ascii=False)
+        if signature in seen_payloads:
+            continue
+        seen_payloads.add(signature)
+        if isinstance(parsed, dict):
+            blocks.append(parsed)
+        elif isinstance(parsed, list):
+            blocks.extend(item for item in parsed if isinstance(item, dict))
+    return blocks
+
+
+def _parse_iso8601_minutes(value: str) -> int | None:
+    text = _bounded_text(value, MAX_DURATION_TEXT_CHARS).strip()
+    if not text:
+        return None
+    upper = text.upper()
+    if not upper.startswith("P"):
+        return None
+
+    total = 0
+    number = ""
+    in_time = False
+    saw_component = False
+    multipliers = {
+        "W": 7 * 24 * 60,
+        "D": 24 * 60,
+        "H": 60,
+        "M": 1,
+    }
+    seconds = 0
+
+    for char in upper[1:]:
+        if char == "T":
+            if number:
+                return None
+            in_time = True
+            continue
+        if char.isdigit():
+            number += char
+            continue
+        if not number:
+            return None
+        amount = int(number)
+        number = ""
+        if char == "S":
+            if not in_time:
+                return None
+            seconds = amount
+            saw_component = True
+            continue
+        if char == "M" and not in_time:
+            return None
+        multiplier = multipliers.get(char)
+        if multiplier is None:
+            return None
+        total += amount * multiplier
+        saw_component = True
+    if number or not saw_component:
+        return None
+    if seconds >= 30:
+        total += 1
+    return total
+
+
+def _extract_wprm_instruction_groups(reduced_html: str) -> list[dict]:
+    soup = BeautifulSoup(_bounded_text(reduced_html, MAX_RECIPE_HTML_CHARS), "html.parser")
+    container = soup.select_one(".wprm-recipe-instructions-container") or soup
+    groups: list[dict] = []
+    seen_global_steps: set[str] = set()
+
+    def _collect_steps(root) -> list[str]:
+        steps: list[str] = []
+        for node in _iter_descendants_by_exact_class(root, {"wprm-recipe-instruction-text", "wprm-recipe-instruction"}):
+            text = _clean_instruction_step_text(node.get_text(" "))
+            canonical = _canonical_recipe_text(text)
+            if not text or (canonical and canonical in seen_global_steps):
+                continue
+            if canonical:
+                seen_global_steps.add(canonical)
+            steps.append(text)
+        return steps
+
+    group_nodes = list(_iter_descendants_by_exact_class(container, {"wprm-recipe-instruction-group"}))
+    if not group_nodes:
+        return []
+
+    top_level_steps: list[str] = []
+    for child in getattr(container, "children", []):
+        if "wprm-recipe-instruction-group" in _node_class_tokens(child):
+            continue
+        if getattr(child, "name", ""):
+            top_level_steps.extend(_collect_steps(child))
+    if top_level_steps:
+        groups.append({"title": "Instructions", "steps": top_level_steps})
+
+    for group_node in group_nodes:
+        title_node = next(iter(_iter_descendants_by_exact_class(group_node, {"wprm-recipe-group-name"})), None)
+        title = _normalize_section_title(title_node.get_text(" ") if title_node else "")
+        steps = _collect_steps(group_node)
+        if steps:
+            groups.append({"title": title, "steps": steps})
+    return groups
+
+
+def _extract_bigoven_instruction_groups(reduced_html: str) -> list[dict]:
+    soup = BeautifulSoup(_bounded_text(reduced_html, MAX_RECIPE_HTML_CHARS), "html.parser")
+    container = None
+    for node in _iter_descendants_by_tag(soup, {"div"}):
+        attrs = getattr(node, "attrs", {})
+        if str(attrs.get("id", "")).lower() == "instr" and "instructions" in _node_class_tokens(node):
+            container = node
+            break
+    if not container:
+        return []
+    steps = [
+        _clean_instruction_step_text(node.get_text(" "))
+        for node in _iter_descendants_by_tag(container, {"p"})
+    ]
+    steps = [step for step in steps if step]
+    return [{"title": "", "steps": steps}] if steps else []
+
+
+def _extract_recipe_scoped_html(reduced_html: str) -> str:
+    return _bounded_text(reduced_html, MAX_RECIPE_HTML_CHARS)
+
+
+def _extract_dom_recipe_data(html: str) -> dict:
+    scoped_html = _extract_recipe_scoped_html(_bounded_text(html, MAX_RECIPE_HTML_CHARS))
+    scoped_soup = BeautifulSoup(scoped_html, "html.parser")
+    visible_text = _clean_text(extract_visible_text(scoped_html).replace("\n", " \n "))
+
+    prep_time = _extract_time_from_text(visible_text, r"prep(?:aration)?\s*time")
+    cook_time = _extract_time_from_text(visible_text, r"cook(?:ing)?\s*time")
+    total_time = _extract_time_from_text(visible_text, r"total\s*time")
+
+    def _dedupe_entries(entries: list[str]) -> list[str]:
+        deduped: list[str] = []
+        seen_entries: set[str] = set()
+        for entry in entries:
+            canonical = _canonical_recipe_text(entry)
+            if not canonical or canonical in seen_entries:
+                continue
+            seen_entries.add(canonical)
+            deduped.append(entry)
+        return deduped
+
+    ingredient_groups: list[dict] = []
+    for heading in _iter_descendants_by_tag(scoped_soup, {"h2", "h3", "h4", "h5", "p"}):
+        next_list = _find_next_sibling_tag(getattr(heading, "parent", None), heading, {"ul", "ol"})
+        if next_list is None:
+            continue
+        class_blob = " ".join(_node_class_tokens(next_list)).lower()
+        if "ingredient" not in class_blob:
+            continue
+        items = [
+            text for text in (_clean_text(li.get_text(" ")) for li in _iter_descendants_by_tag(next_list, {"li"}))
+            if text and not _is_dom_ingredient_noise(text)
+        ]
+        items = _dedupe_entries(items)
+        if items:
+            ingredient_groups.append({"title": _normalize_section_title(heading.get_text(" ")), "items": items})
+
+    if not ingredient_groups:
+        flat_ingredients = []
+        for li in _iter_descendants_by_tag(scoped_soup, {"li"}):
+            class_blob = " ".join(_node_class_tokens(li)).lower()
+            if "ingredient" not in class_blob:
+                continue
+            text = _clean_text(li.get_text(" "))
+            if text and not _is_dom_ingredient_noise(text):
+                flat_ingredients.append(text)
+        flat_ingredients = _dedupe_entries(flat_ingredients)
+        if flat_ingredients:
+            ingredient_groups.append({"title": "", "items": flat_ingredients})
+
+    instruction_groups: list[dict] = []
+    instruction_source = "generic"
+
+    if scoped_soup.select_one(".wprm-recipe-instructions-container"):
+        instruction_groups = _extract_wprm_instruction_groups(scoped_html)
+        if instruction_groups:
+            instruction_source = "wprm"
+
+    if not instruction_groups:
+        instruction_groups = _extract_bigoven_instruction_groups(scoped_html)
+        if instruction_groups:
+            instruction_source = "bigoven_instr"
+
+    if not instruction_groups:
+        for heading in _iter_descendants_by_tag(scoped_soup, {"h2", "h3", "h4", "h5", "p"}):
+            next_list = _find_next_sibling_tag(getattr(heading, "parent", None), heading, {"ol", "ul"})
+            if next_list is None:
+                continue
+            class_blob = " ".join(_node_class_tokens(next_list)).lower()
+            if not any(term in class_blob for term in ("instruction", "direction", "method", "step")):
+                continue
+            steps = [
+                text for text in (_clean_instruction_step_text(li.get_text(" ")) for li in _iter_descendants_by_tag(next_list, {"li"}))
+                if text
+            ]
+            steps = _dedupe_entries(steps)
+            if steps:
+                instruction_groups.append({"title": _normalize_section_title(heading.get_text(" ")), "steps": steps})
+
+    if not instruction_groups:
+        flat_steps = []
+        for li in _iter_descendants_by_tag(scoped_soup, {"li"}):
+            class_blob = " ".join(_node_class_tokens(li)).lower()
+            if not any(term in class_blob for term in ("instruction", "direction", "method", "step")):
+                continue
+            text = _clean_instruction_step_text(li.get_text(" "))
+            if text:
+                flat_steps.append(text)
+        flat_steps = _dedupe_entries(flat_steps)
+        if flat_steps:
+            instruction_groups.append({"title": "", "steps": flat_steps})
+
+    ingredient_groups = _dedupe_groups(ingredient_groups, "items")
+    instruction_groups = _dedupe_groups(instruction_groups, "steps")
+
+    return {
+        "prep_time": prep_time,
+        "cook_time": cook_time,
+        "total_time": total_time,
+        "ingredient_groups": ingredient_groups,
+        "instruction_groups": instruction_groups,
+        "instruction_source": instruction_source,
+    }
+
+
+def _parse_html_attributes(tag: str) -> dict[str, str]:
+    soup = BeautifulSoup(tag, "html.parser")
+    node = next((child for child in getattr(soup, "children", []) or [] if getattr(child, "name", "")), None)
+    if node is None:
+        return {}
+    attrs: dict[str, str] = {}
+    for key, value in node.attrs.items():
+        if isinstance(value, list):
+            attrs[key.lower()] = " ".join(str(item) for item in value if str(item).strip())
+        else:
+            attrs[key.lower()] = str(value).strip()
+    return attrs
+
+
+def _extract_meta_image(html: str, page_url: str, source: str) -> str:
+    soup = BeautifulSoup(_bounded_text(html, MAX_RECIPE_HTML_CHARS), "html.parser")
+    meta_targets = (
+        ("property", {"og:image:secure_url", "og:image", "twitter:image", "twitter:image:src"}),
+        ("name", {"og:image", "og:image:secure_url", "twitter:image", "twitter:image:src"}),
+        ("itemprop", {"image"}),
+    )
+    candidates: list[dict] = []
+    for attr_name, wanted_values in meta_targets:
+        for node in _iter_descendants_by_tag(soup, {"meta"}):
+            attrs = getattr(node, "attrs", {})
+            attr_value = str(attrs.get(attr_name, "") or "").strip().lower()
+            if attr_value not in wanted_values:
+                continue
+            content = str(attrs.get("content", "") or "").strip()
+            if content:
+                candidates.append({"url": content, "page_url": page_url})
+    return _choose_best_image(candidates, source)
+
+
+def _extract_dom_fallback_image(html: str, page_url: str) -> str:
+    scoped_html = _extract_recipe_scoped_html(html)
+    soup = BeautifulSoup(scoped_html, "html.parser")
+    candidates: list[dict] = []
+    for node in _iter_descendants_by_tag(soup, {"img"}):
+        attrs = {key.lower(): str(value).strip() for key, value in node.attrs.items() if not isinstance(value, list)}
+        list_attrs = {key.lower(): " ".join(value) for key, value in node.attrs.items() if isinstance(value, list)}
+        attrs.update(list_attrs)
+        for key in ("src", "data-src", "data-lazy-src", "data-srcset", "srcset"):
+            possible_url = attrs.get(key, "")
+            if not possible_url:
+                continue
+            if "," in possible_url and (" w" in possible_url or " x" in possible_url):
+                possible_url = _best_url_from_srcset(possible_url)
+            if possible_url:
+                candidates.append(
+                    {
+                        "url": possible_url,
+                        "page_url": page_url,
+                        "width": attrs.get("width"),
+                        "height": attrs.get("height"),
+                    }
+                )
+    return _choose_best_image(candidates, "dom")
+
+
+def _parse_ingredient_struct(text: str) -> dict:
+    raw = _clean_text(text)
+    if not raw:
+        parsed = {"raw": "", "quantity": None, "unit": None, "name": "", "note": None}
+        parsed.update(_build_ingredient_display_fields(parsed))
+        return parsed
+
+    quantity, unit, name, notes = _parse_ingredient_core(raw)
+    quantity = _fix_common_ocr_quantity_errors(quantity, unit, name)
+    quantity = _maybe_override_with_parenthetical_quantity(quantity, unit, name, notes)
+
+    if not name:
+        parsed = {"raw": raw, "quantity": None, "unit": None, "name": raw, "note": " ; ".join(notes) if notes else None}
+        parsed.update(_build_ingredient_display_fields(parsed))
+        return parsed
+
+    parsed = {"raw": raw, "quantity": quantity, "unit": unit, "name": name, "note": " ; ".join(notes) if notes else None}
+    parsed.update(_build_ingredient_display_fields(parsed))
+    return parsed
+
+
+def _parse_spoken_quantity_phrase(value: str) -> float | None:
+    candidate = _normalize_transcript_context_text(_bounded_text(value, MAX_REGEX_TEXT_CHARS)).lower()
+    candidate = re.sub(r"[-â€“]+", " ", candidate)
+    candidate = re.sub(r"\s+", " ", candidate).strip()
+    if not candidate:
+        return None
+    direct_quantity, direct_remainder = _parse_ingredient_quantity(candidate)
+    if direct_quantity is not None and not direct_remainder:
+        return direct_quantity
+
+    def _parse_spoken_fraction_tokens(tokens: list[str]) -> float | None:
+        if not tokens:
+            return None
+        if tokens in (["half"], ["half", "a"], ["a", "half"], ["one", "half"]):
+            return 0.5
+        if tokens in (["quarter"], ["quarters"], ["a", "quarter"], ["one", "quarter"], ["fourth"], ["fourths"], ["a", "fourth"], ["one", "fourth"]):
+            return 0.25
+        if tokens in (["third"], ["thirds"], ["a", "third"], ["one", "third"]):
+            return 1.0 / 3.0
+        if tokens == ["two", "thirds"]:
+            return 2.0 / 3.0
+        if tokens in (["three", "quarters"], ["three", "quarter"], ["three", "fourths"], ["three", "fourth"]):
+            return 0.75
+        return None
+
+    tokens = candidate.split()
+    if len(tokens) >= 3 and tokens[1] == "and":
+        whole = _SPOKEN_NUMBER_WORDS.get(tokens[0])
+        fraction = _parse_spoken_fraction_tokens(tokens[2:])
+        if whole is not None and fraction is not None:
+            return whole + fraction
+
+    fraction = _parse_spoken_fraction_tokens(tokens)
+    if fraction is not None:
+        return fraction
+    return _SPOKEN_NUMBER_WORDS.get(candidate)
+
+
+def _normalize_ai_cleanup_prompt_ingredient_line(value) -> str:
+    raw = _clean_text(_stringify_recipe_component(value, prefer_ingredient_order=True))
+    if not raw:
+        return ""
+    quantity, unit, name, notes = _parse_ingredient_core(raw)
+    display_quantity = _format_display_quantity(quantity)
+    display_unit = _format_display_unit(unit, quantity)
+    display_name = _clean_text(name)
+    parts = [part for part in (display_quantity, display_unit, display_name) if part]
+    display_text = " ".join(parts).strip() or raw
+    if notes:
+        display_text = f"{display_text} ({' ; '.join(notes)})"
+    return _clean_text(display_text)
+
+
+def _looks_like_ingredient_quantity(value: str) -> bool:
+    candidate = _clean_text(_bounded_text(value, MAX_DURATION_TEXT_CHARS))
+    if not candidate:
+        return False
+    quantity, remainder = _parse_ingredient_quantity(candidate)
+    return quantity is not None and not remainder
+
+
+def _normalize_plain_string_list(value) -> list[str]:
+    cleaned_items: list[str] = []
+    values = value if isinstance(value, (list, tuple)) else [value]
+    for item in values:
+        cleaned = _stringify_recipe_component(item, prefer_ingredient_order=True)
+        cleaned = _normalize_spoken_ingredient_text(_bounded_text(cleaned, MAX_REGEX_TEXT_CHARS))
+        cleaned = _collapse_space_before_periods(cleaned[:MAX_REGEX_TEXT_CHARS])
+        cleaned = _remove_orphan_word_periods(cleaned)
+        cleaned = " ".join(cleaned.split())
+        if cleaned:
+            cleaned_items.append(cleaned)
+    return cleaned_items
+
+
+def _is_non_ingredient_header_line(value: str) -> bool:
+    candidate = _clean_text(_bounded_text(value, MAX_INGREDIENT_GROUP_TITLE_CHARS))
+    if not candidate:
+        return True
+    lowered = candidate.lower()
+    if re.match(r"^(?:serves?|servings?|serving\s+size|yield|makes?)\b", lowered):
+        return True
+    if candidate.endswith(":") and not re.search(r"\d", candidate):
+        return True
+    if re.match(r"^(?:for the|to serve|for serving|optional(?: toppings?| garnish| finishers?)?)\b", lowered):
+        return True
+    if _is_ai_header_label_line(lowered):
+        return True
+    if ";" in candidate or " - " in candidate or " | " in candidate:
+        parts = _split_text_on_delimiters(candidate, (";", " - ", "|"))
+        if len(parts) >= 2 and _AI_INGREDIENT_HEADER_LABEL_PATTERN.search(" ".join(parts[1:])):
+            return True
+    if _looks_like_ai_ingredient_amount(candidate):
+        return False
+    if INGREDIENT_OPTIONAL_WORDING_RE.search(candidate) or INGREDIENT_FOODISH_WORD_RE.search(candidate):
+        return False
+    words = re.findall(r"[A-Za-z]+(?:'[A-Za-z]+)?", candidate)
+    if 1 <= len(words) <= 4 and all(len(word) > 1 for word in words):
+        return False
+    return True
+
+
+def _sanitize_ai_ingredient_group_title(value: str) -> str:
+    candidate = _clean_text(_bounded_text(value, MAX_INGREDIENT_GROUP_TITLE_CHARS))
+    if not candidate:
+        return ""
+    lowered = candidate.lower()
+    if re.match(r"^(?:serves?|servings?|serving\s+size|yield|makes?)\b", lowered):
+        return ""
+    if len(candidate) > 60:
+        return ""
+    if _AI_INGREDIENT_HEADER_LABEL_PATTERN.search(candidate) and (
+        ";" in candidate or "," in candidate or re.search(r"\b(?:source|nutrition|notes?|ingredients?)\b", lowered)
+    ):
+        return ""
+    return candidate
+
+
+def _extract_ingredient_candidates_from_text(lines: list[str], text: str) -> list[str]:
+    def _trim_candidate_line(value: str) -> str:
+        return _clean_text(value)[:MAX_INGREDIENT_LINE_CHARS]
+
+    def _strip_leading_bullet_token(value: str) -> str:
+        cleaned = value.lstrip()
+        if cleaned.startswith(("-", "*", "•")):
+            return cleaned[1:].lstrip()
+        return cleaned
+
+    bounded_text = _clean_text(text)[:MAX_REGEX_TEXT_CHARS]
+    ingredients: list[str] = []
+    for line in lines:
+        cleaned = _clean_ingredient_candidate(_trim_candidate_line(line))
+        if not cleaned:
+            continue
+        lowered = cleaned.lower()
+        if any(lowered.startswith(prefix) for prefix in ("method", "instructions", "directions", "steps")):
+            continue
+        if _looks_like_quantity_or_unit_prefix(cleaned) or _contains_measurement(cleaned):
+            ingredients.append(cleaned)
+            continue
+        if _should_keep_short_unmeasured_ingredient_line(cleaned):
+            ingredients.append(cleaned)
+
+    if len(ingredients) < 2:
+        for phrase in _split_text_on_delimiters(bounded_text, (",", "\n", ";")):
+            cleaned = _clean_ingredient_candidate(phrase)
+            if _contains_measurement(cleaned):
+                ingredients.append(cleaned)
+
+    for phrase in _split_text_on_delimiters(bounded_text, (",", "\n", ";")):
+        ingredients.extend(_extract_embedded_simple_ingredient_phrases(phrase))
+
+    extra_match = re.search(r"\bextra\s+(?:cheddar|chedder)\b", bounded_text, flags=re.IGNORECASE)
+    if extra_match:
+        ingredients.append(_clean_ingredient_candidate(extra_match.group(0)))
+
+    return _dedupe_text_entries(ingredients)
+
+
+def _extract_ocr_preamble_lines(lines: list[str]) -> list[str]:
+    preamble: list[str] = []
+    for raw_line in lines:
+        cleaned_line = _clean_text(_bounded_text(raw_line, MAX_REGEX_TEXT_CHARS)).strip(" -Ã¢â‚¬Â¢*")
+        if not cleaned_line:
+            continue
+        heading_match = re.search(
+            r"\b(ingredients?|instructions?|directions?|method|steps)\b",
+            cleaned_line,
+            flags=re.IGNORECASE,
+        )
+        if heading_match:
+            prefix = cleaned_line[: heading_match.start()].strip(" :-|")
+            if prefix:
+                preamble.append(prefix)
+            break
+        preamble.append(cleaned_line)
+    return preamble
+
+
+def _looks_like_ocr_metadata_line(value: str) -> bool:
+    candidate = _clean_text(_bounded_text(value, MAX_REGEX_TEXT_CHARS))
+    if any(re.search(pattern, candidate, flags=re.IGNORECASE) for pattern in _OCR_TITLE_METADATA_PATTERNS):
+        return True
+    if re.search(r"\d", candidate):
+        letters = re.findall(r"[A-Za-z]", candidate)
+        digits = re.findall(r"\d", candidate)
+        if digits and len(digits) >= max(2, len(letters)):
+            return True
+    return False
+
+
+def parse_social_caption_recipe(caption_text: str, source_url: str, title_hint: str = "") -> dict:
+    cleaned = _strip_social_caption_noise(_bounded_text(caption_text, MAX_REGEX_TEXT_CHARS))
+    lines = [line.strip() for line in cleaned.split("\n") if line.strip()]
+    title = _clean_text(title_hint)
+
+    if source_url.startswith("image://") and lines:
+        ocr_title = _extract_ocr_title_from_lines(lines)
+        if ocr_title:
+            title = ocr_title
+
+    if not title and lines:
+        first_line = _clean_text(_bounded_text(lines[0], MAX_REGEX_TEXT_CHARS)).strip(" -â€¢*")
+        first_line_lower = first_line.lower()
+        has_heading_word = any(word in first_line_lower for word in ("ingredient", "ingredients", "method", "instruction", "instructions"))
+        if 6 <= len(first_line) <= 110 and not has_heading_word:
+            title = first_line
+
+    ingredients = _extract_ingredient_candidates_from_text(lines, cleaned)
+    instructions = _split_instruction_sentences(cleaned)
+    if not instructions and lines:
+        instructions = [
+            _clean_text(line).strip(" -â€¢*")
+            for line in lines
+            if re.search(r"\b(?:add|mix|whisk|stir|cook|bake|simmer|boil|heat|fold|serve|chop|slice|season)\b", line, re.IGNORECASE)
+        ]
+        instructions = _dedupe_text_entries(instructions)
+
+    servings_match = re.search(r"\b(?:serves|servings?)\s*[:\-]?\s*(\d{1,2})\b", cleaned, flags=re.IGNORECASE)
+    servings = servings_match.group(1) if servings_match else ""
+    prep_time = _extract_time_from_text(cleaned, r"prep(?:aration)?\s*time")
+    cook_time = _extract_time_from_text(cleaned, r"cook(?:ing)?\s*time")
+    total_time = _extract_time_from_text(cleaned, r"total\s*time")
+    prep_time, prep_minutes = _normalize_duration(prep_time)
+    cook_time, cook_minutes = _normalize_duration(cook_time)
+    total_time, total_minutes = _normalize_duration(total_time)
+
+    return {
+        "url": source_url,
+        "title": title,
+        "image_url": "",
+        "ingredients": ingredients,
+        "instructions": instructions,
+        "ingredient_groups": [{"title": "", "items": ingredients}] if ingredients else [],
+        "instruction_groups": [{"title": "", "steps": instructions}] if instructions else [],
+        "servings": servings,
+        "prep_time": prep_time,
+        "cook_time": cook_time,
+        "total_time": total_time,
+        "prep_minutes": prep_minutes,
+        "cook_minutes": cook_minutes,
+        "total_minutes": total_minutes,
+    }
+
+
+def _parse_pasted_recipe_text(raw_text: str) -> dict:
+    cleaned = _bounded_text(str(raw_text or "").replace("\r\n", "\n").replace("\r", "\n").strip(), MAX_REGEX_TEXT_CHARS)
+    lines = [_normalize_pasted_recipe_line(line) for line in cleaned.split("\n")]
+    lines = [line for line in lines if line]
+    if not lines:
+        raise HTTPException(status_code=422, detail="Recipe text is required")
+
+    title = ""
+    servings = ""
+    prep_time = ""
+    cook_time = ""
+    total_time = ""
+    description_lines: list[str] = []
+    note_lines: list[str] = []
+    ingredient_section_lines: list[str] = []
+    instruction_lines: list[str] = []
+    note_heading = ""
+    current_section = ""
+    has_explicit_ingredient_heading = any(line.rstrip(":").strip().lower() in PASTE_INGREDIENT_HEADINGS for line in lines)
+
+    for line in lines:
+        bounded_line = _bounded_text(line, MAX_REGEX_TEXT_CHARS)
+        heading = bounded_line.rstrip(":").strip().lower()
+        if heading in PASTE_INGREDIENT_HEADINGS:
+            current_section = "ingredients"
+            continue
+        if heading in PASTE_INSTRUCTION_HEADINGS:
+            current_section = "instructions"
+            continue
+        if _is_paste_note_heading(bounded_line):
+            current_section = "notes"
+            note_heading = bounded_line.rstrip(":").strip()
+            continue
+
+        servings_value = _extract_labeled_metadata_value(bounded_line, _PASTED_SERVINGS_LABELS)
+        if servings_value:
+            servings = servings_value
+            continue
+        prep_value = _extract_labeled_metadata_value(bounded_line, _PASTED_PREP_LABELS)
+        if prep_value:
+            prep_time = prep_value
+            continue
+        cook_value = _extract_labeled_metadata_value(bounded_line, _PASTED_COOK_LABELS)
+        if cook_value:
+            cook_time = cook_value
+            continue
+        total_value = _extract_labeled_metadata_value(bounded_line, _PASTED_TOTAL_LABELS)
+        if total_value:
+            total_time = total_value
+            continue
+
+        if not title and not current_section:
+            title = bounded_line
+            continue
+        if has_explicit_ingredient_heading and not current_section and title:
+            normalized_description = _normalize_pasted_recipe_line(bounded_line)
+            if normalized_description:
+                description_lines.append(normalized_description)
+            continue
+        if current_section == "ingredients":
+            normalized_ingredient = _normalize_pasted_recipe_line(bounded_line)
+            if normalized_ingredient:
+                ingredient_section_lines.append(normalized_ingredient)
+            continue
+        if current_section == "instructions":
+            normalized_instruction = _normalize_pasted_recipe_line(bounded_line, instruction=True)
+            if normalized_instruction:
+                instruction_lines.append(normalized_instruction)
+            continue
+        if current_section == "notes":
+            normalized_note = _normalize_pasted_recipe_line(bounded_line)
+            if normalized_note:
+                note_lines.append(normalized_note)
+
+    ingredient_groups = _build_pasted_ingredient_groups(ingredient_section_lines)
+    ingredient_lines = _flatten_groups(ingredient_groups, "items")
+    if not ingredient_lines:
+        ingredient_lines = _extract_ingredient_candidates_from_text(lines, cleaned)
+        ingredient_groups = [{"title": "", "items": ingredient_lines}] if ingredient_lines else []
+    if not instruction_lines:
+        instruction_lines = [
+            normalized_instruction
+            for normalized_instruction in (
+                _normalize_pasted_recipe_line(step, instruction=True)
+                for step in _split_instruction_sentences(cleaned)
+            )
+            if normalized_instruction
+        ]
+
+    prep_time, prep_minutes = _normalize_duration(prep_time)
+    cook_time, cook_minutes = _normalize_duration(cook_time)
+    total_time, total_minutes = _normalize_duration(total_time)
+    candidate = {
+        "url": "",
+        "title": title,
+        "image_url": "",
+        "notes": _compose_pasted_recipe_notes(description_lines, note_lines, note_heading),
+        "ingredients": ingredient_lines,
+        "instructions": instruction_lines,
+        "ingredient_groups": ingredient_groups,
+        "instruction_groups": [{"title": "", "steps": instruction_lines}] if instruction_lines else [],
+        "servings": servings,
+        "prep_time": prep_time,
+        "cook_time": cook_time,
+        "total_time": total_time,
+        "prep_minutes": prep_minutes,
+        "cook_minutes": cook_minutes,
+        "total_minutes": total_minutes,
+    }
+    return _finalize_recipe_candidate(candidate, "", "pasted_text")
 
 
 def _normalized_ingredient_compare_key(value: str) -> str:
@@ -6324,25 +7356,19 @@ def normalize_ai_review_response(payload: dict) -> dict:
         isinstance(group, dict) for group in raw_ingredient_groups
     )
     logger.info("ai_cleanup_items_before_normalize=%s", raw_ingredient_groups)
-    if has_grouped_ingredients:
-        ingredient_groups = raw_ingredient_groups
-    else:
-        ingredient_groups = _normalize_group_items(raw_ingredient_groups, "items")
+    ingredient_groups = _normalize_group_items(raw_ingredient_groups, "items")
     if not ingredient_groups and not has_grouped_ingredients:
         fallback_ingredients = _normalize_plain_string_list(payload.get("ingredients") or [])
         ingredient_groups = [{"title": "", "items": fallback_ingredients}] if fallback_ingredients else []
     logger.info("ai_cleanup_items_after_normalize=%s", ingredient_groups)
     logger.info("ai_cleanup_items_before_merge=%s", ingredient_groups)
-    if has_grouped_ingredients:
-        ingredient_groups_after_merge = ingredient_groups
-    else:
-        ingredient_groups_after_merge = [
-            {
-                "title": group.get("title", ""),
-                "items": _merge_split_ingredient_lines(group.get("items", [])),
-            }
-            for group in ingredient_groups
-        ]
+    ingredient_groups_after_merge = [
+        {
+            "title": group.get("title", ""),
+            "items": _merge_split_ingredient_lines(group.get("items", [])),
+        }
+        for group in ingredient_groups
+    ]
     logger.info("ai_cleanup_items_after_merge=%s", ingredient_groups_after_merge)
     ingredient_groups = _filter_ai_ingredient_groups(ingredient_groups_after_merge)
 
@@ -6565,7 +7591,7 @@ async def process_review_queue() -> None:
 
 def fetch_recipe_data_from_url(url: str) -> dict:
     try:
-        response = requests.get(url, headers=REQUEST_HEADERS, timeout=8)
+        response = safe_get(url, headers=REQUEST_HEADERS, timeout=8)
         response.raise_for_status()
         content_type = response.headers.get("Content-Type", "")
         if "text/html" not in content_type.lower():
@@ -6721,6 +7747,48 @@ def fetch_recipe_data_from_url(url: str) -> dict:
     }
     _log_recipe_candidate_counts(url, "wprm_dom", wprm_candidate)
 
+    if jsonld_best_recipe is not None:
+        jsonld_has_core = bool((jsonld_best_recipe.get("ingredients") or []) and (jsonld_best_recipe.get("instructions") or []))
+        jsonld_group_count = len(_normalize_groups(jsonld_best_recipe.get("instruction_groups") or [], "steps"))
+        wprm_group_titles = {
+            _normalize_section_title(group.get("title", ""))
+            for group in _normalize_groups(wprm_candidate.get("instruction_groups") or [], "steps")
+            if isinstance(group, dict)
+        }
+        wprm_has_distinct_grouping = (
+            len(wprm_candidate.get("instruction_groups") or []) > jsonld_group_count
+            or any(title and title.lower() != "instructions" for title in wprm_group_titles)
+        )
+        if jsonld_has_core and dom_data.get("instruction_source") == "wprm" and not wprm_has_distinct_grouping:
+            dom_candidate = {
+                "ingredients": [],
+                "instructions": [],
+                "image_url": final_image,
+                "ingredient_groups": [],
+                "instruction_groups": [],
+                "prep_time": "",
+                "cook_time": "",
+                "total_time": "",
+                "prep_minutes": None,
+                "cook_minutes": None,
+                "total_minutes": None,
+            }
+            wprm_candidate = {
+                "title": (jsonld_best_recipe or {}).get("title") or "",
+                "ingredients": [],
+                "instructions": [],
+                "image_url": final_image,
+                "ingredient_groups": [],
+                "instruction_groups": [],
+                "servings": (jsonld_best_recipe or {}).get("servings") or "",
+                "prep_time": (jsonld_best_recipe or {}).get("prep_time") or "",
+                "cook_time": (jsonld_best_recipe or {}).get("cook_time") or "",
+                "total_time": (jsonld_best_recipe or {}).get("total_time") or "",
+                "prep_minutes": (jsonld_best_recipe or {}).get("prep_minutes"),
+                "cook_minutes": (jsonld_best_recipe or {}).get("cook_minutes"),
+                "total_minutes": (jsonld_best_recipe or {}).get("total_minutes"),
+            }
+
     parser_counts = {
         "jsonld": _recipe_parser_counts(jsonld_best_recipe or {}),
         "dom": _recipe_parser_counts(dom_candidate),
@@ -6779,7 +7847,14 @@ def fetch_recipe_data_from_url(url: str) -> dict:
     if selected_source == "jsonld":
         jsonld_ingredient_groups = _normalize_groups((jsonld_best_recipe or {}).get("ingredient_groups") or [], "items")
         dom_ingredient_groups = _normalize_groups(dom_candidate.get("ingredient_groups") or [], "items")
+        jsonld_instruction_groups = _normalize_groups((jsonld_best_recipe or {}).get("instruction_groups") or [], "steps")
+        dom_instruction_groups = _normalize_groups(dom_candidate.get("instruction_groups") or [], "steps")
+        dom_flat_instructions = _flatten_groups(dom_instruction_groups, "steps")
+        jsonld_flat_instructions = _flatten_groups(jsonld_instruction_groups, "steps")
+        dom_structure_is_noisy = _count_instruction_prefix_expansions(dom_flat_instructions) > 0
         if (
+            not dom_structure_is_noisy
+            and
             len(jsonld_ingredient_groups) <= 1
             and len(dom_ingredient_groups) >= 2
             and len(_flatten_groups(dom_ingredient_groups, "items")) >= len(_flatten_groups(jsonld_ingredient_groups, "items"))
@@ -6788,16 +7863,27 @@ def fetch_recipe_data_from_url(url: str) -> dict:
             preferred["ingredients"] = _flatten_groups(dom_ingredient_groups, "items")
             ingredient_groups_source = "dom-override"
 
-        jsonld_instruction_groups = _normalize_groups((jsonld_best_recipe or {}).get("instruction_groups") or [], "steps")
-        dom_instruction_groups = _normalize_groups(dom_candidate.get("instruction_groups") or [], "steps")
         if (
-            len(jsonld_instruction_groups) <= 1
-            and len(dom_instruction_groups) >= 2
-            and len(_flatten_groups(dom_instruction_groups, "steps")) >= len(_flatten_groups(jsonld_instruction_groups, "steps"))
+            not dom_structure_is_noisy
+            and
+            len(dom_flat_instructions) >= 2
+            and (
+                len(jsonld_instruction_groups) <= 1
+                or len(dom_instruction_groups) > len(jsonld_instruction_groups)
+                or _has_named_and_unnamed_instruction_groups(dom_instruction_groups)
+                or (
+                    any(
+                        _normalize_section_title(group.get("title", "")).lower() != "instructions"
+                        for group in dom_instruction_groups
+                        if isinstance(group, dict)
+                    )
+                    and len(dom_flat_instructions) >= len(jsonld_flat_instructions)
+                )
+            )
         ):
             preferred["instruction_groups"] = dom_instruction_groups
-            existing_flat_instructions = _dedupe_text_entries(preferred.get("instructions") or [])
-            preferred["instructions"] = existing_flat_instructions or _flatten_groups(dom_instruction_groups, "steps")
+            if len(jsonld_flat_instructions) <= 1 and len(dom_flat_instructions) > len(jsonld_flat_instructions):
+                preferred["instructions"] = dom_flat_instructions
             instruction_groups_source = "dom-override"
 
     logger.info(
@@ -7011,7 +8097,7 @@ def _validate_rating(value: int | None) -> int | None:
 def _get_settings_key_bytes() -> bytes:
     key = (os.getenv(SETTINGS_ENCRYPTION_KEY_ENV, "") or "").strip()
     if not key:
-        raise HTTPException(status_code=500, detail=f"{SETTINGS_ENCRYPTION_KEY_ENV} is not configured")
+        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR_MESSAGE)
     return hashlib.sha256(key.encode("utf-8")).digest()
 
 
@@ -8624,6 +9710,8 @@ def extract_metadata(url: str = Query(...), current_user: dict = Depends(require
         caption_recipe_like = False
         transcript_pipeline_attempted = False
         transcript_fallback_payload = None
+        if not is_social:
+            validate_public_url(raw_url)
         if is_social:
             try:
                 social_resolution = resolve_social_url(raw_url)
@@ -9050,6 +10138,8 @@ def extract_metadata(url: str = Query(...), current_user: dict = Depends(require
             logger.info("extract-metadata parser running on trusted resolved social URL=%s", cleaned_url)
         recipe_data = fetch_recipe_data_from_url(cleaned_url)
         title = recipe_data.get("title") or fetch_title_from_url(cleaned_url)
+    except PublicUrlValidationError as exc:
+        raise HTTPException(status_code=422, detail=USER_FACING_PUBLIC_URL_ERROR) from exc
     except Exception as exc:
         logger.exception(
             "extract-metadata failed raw_url=%s is_social=%s error=%s",
@@ -9074,10 +10164,7 @@ def extract_metadata(url: str = Query(...), current_user: dict = Depends(require
                 "source_app": "Facebook" if submission_source_type == "facebook" else "",
                 "source_type": "Social" if submission_source_type == "facebook" else "Web",
             }
-        cleaned_url = raw_url
-        source_app, source_type = infer_source(raw_url)
-        recipe_data = {}
-        title = ""
+        raise HTTPException(status_code=502, detail="Recipe extraction failed while processing this page.") from exc
 
     payload = {
         "url": cleaned_url,
@@ -9511,6 +10598,46 @@ else:
         if image is not None and not isinstance(image, UploadFile):
             raise HTTPException(status_code=422, detail="Image file is required")
         return await _import_image_recipe_from_upload(image)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code >= 500:
+        correlation_id = _request_correlation_id(request)
+        logger.error(
+            "http_exception status=%s path=%s correlation_id=%s detail=%s",
+            exc.status_code,
+            request.url.path,
+            correlation_id,
+            exc.detail,
+        )
+        return _json_error_response(
+            request,
+            status_code=exc.status_code,
+            detail=INTERNAL_SERVER_ERROR_MESSAGE,
+            correlation_id=correlation_id,
+            headers=exc.headers,
+        )
+    return _json_error_response(request, status_code=exc.status_code, detail=exc.detail, headers=exc.headers)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    correlation_id = _request_correlation_id(request)
+    logger.exception(
+        "unhandled_exception path=%s correlation_id=%s error=%s",
+        request.url.path,
+        correlation_id,
+        str(exc),
+    )
+    return _json_error_response(
+        request,
+        status_code=500,
+        detail=INTERNAL_SERVER_ERROR_MESSAGE,
+        correlation_id=correlation_id,
+    )
+
+
 @app.exception_handler(RequestValidationError)
 async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
     def _json_safe_validation_errors(errors):
@@ -9524,4 +10651,4 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
 
     safe_errors = _json_safe_validation_errors(exc.errors())
     logger.error("request_validation_error path=%s errors=%s", request.url.path, safe_errors)
-    return JSONResponse(status_code=422, content={"detail": safe_errors})
+    return _json_error_response(request, status_code=422, detail=safe_errors)

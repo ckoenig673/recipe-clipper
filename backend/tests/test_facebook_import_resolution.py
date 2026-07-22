@@ -86,7 +86,7 @@ def test_facebook_watch_import_resolution_pipeline_uses_saved_fixture_and_no_liv
 
     with patch("backend.app.main.resolve_social_url", return_value=mocked_resolution) as mock_social_resolve, patch(
         "backend.app.main.resolve_url", side_effect=lambda value: value
-    ) as mock_resolve_url, patch("backend.app.main.requests.get", return_value=_MockHtmlResponse(fixture["html"])) as mock_requests_get:
+    ) as mock_resolve_url, patch("backend.app.main.safe_get", return_value=_MockHtmlResponse(fixture["html"])) as mock_safe_get:
         resolution_actual = {
             "input_url": fixture["input_url"],
             "resolved_url": mocked_resolution.resolved_url,
@@ -104,7 +104,7 @@ def test_facebook_watch_import_resolution_pipeline_uses_saved_fixture_and_no_liv
         social_extract_payload = main.extract_metadata(url=fixture["input_url"], _={})
         mock_social_resolve.assert_called_once_with(fixture["input_url"])
         assert mock_resolve_url.called
-        assert mock_requests_get.called
+        assert mock_safe_get.called
         assert social_extract_payload["url"] == fixture["resolved_url"]
         assert social_extract_payload["title"] == fixture["final_expected"]["title"]
         assert social_extract_payload["ingredients"] == fixture["final_expected"]["ingredients"]
@@ -149,7 +149,7 @@ def test_social_recovery_prefers_validated_recovered_recipe_url_over_caption_fal
         return_value=(recovered_url, "direct_slug"),
     ) as mock_recovery, patch(
         "backend.app.main.run_social_video_transcript_pipeline"
-    ) as mock_transcript_pipeline, patch("backend.app.main.requests.get", return_value=_MockHtmlResponse(recovered_html)):
+    ) as mock_transcript_pipeline, patch("backend.app.main.safe_get", return_value=_MockHtmlResponse(recovered_html)):
         payload = main.extract_metadata(url=social_url, _={})
 
     mock_recovery.assert_called_once()
@@ -691,13 +691,13 @@ def test_social_transcript_pipeline_prefers_recovered_recipe_url_when_mentioned_
 def test_transcript_recovery_search_uses_ingredient_fingerprint_when_no_domain():
     recorded_queries: list[str] = []
 
-    def _fake_requests_get(url, params=None, **_kwargs):
+    def _fake_safe_get(url, **_kwargs):
         if "duckduckgo.com/html/" in url:
-            recorded_queries.append((params or {}).get("q", ""))
+            recorded_queries.append(main.parse_qs(main.urlparse(url).query).get("q", [""])[0])
             return _MockHtmlResponse('<html><body><a href="https://example.com/nope">x</a></body></html>')
         raise RuntimeError("unexpected request")
 
-    with patch("backend.app.main.requests.get", side_effect=_fake_requests_get), patch(
+    with patch("backend.app.main.safe_get", side_effect=_fake_safe_get), patch(
         "backend.app.main._validate_recipe_page_and_parse",
         return_value=(False, {}),
     ):
@@ -855,7 +855,7 @@ def test_social_recovery_attempts_direct_slug_with_inferred_host():
         return False, {}
 
     with patch("backend.app.main._validate_recipe_page_and_parse", side_effect=_validate_stub), patch(
-        "backend.app.main.requests.get", side_effect=RuntimeError("search unavailable in unit test")
+        "backend.app.main.safe_get", side_effect=RuntimeError("search unavailable in unit test")
     ):
         recovered_url, method = main._recover_recipe_url_from_social_signals(
             "https://www.facebook.com/share/v/1CpgHJDPep/",
@@ -868,3 +868,21 @@ def test_social_recovery_attempts_direct_slug_with_inferred_host():
     assert debug_trace["hosts"] == ["sugargeekshow.com"]
     assert debug_trace["direct_slug_attempted"] is True
     assert "https://sugargeekshow.com/braised-beef-short-ribs/" in validated_urls
+
+
+def test_social_hint_discovery_uses_safe_get_with_encoded_query():
+    recorded_urls: list[str] = []
+
+    def _fake_safe_get(url, **_kwargs):
+        recorded_urls.append(url)
+        return _MockHtmlResponse('<html><body><a class="result__a" href="https://example.com/recipe">Recipe</a></body></html>')
+
+    with patch("backend.app.main.safe_get", side_effect=_fake_safe_get):
+        result = main._discover_recipe_url_from_social_hints(
+            "https://www.facebook.com/reel/1234567890123456",
+            {"title": "One Pan Chicken Rice"},
+        )
+
+    assert result["query"]
+    assert recorded_urls
+    assert recorded_urls[0].startswith("https://html.duckduckgo.com/html/?q=")

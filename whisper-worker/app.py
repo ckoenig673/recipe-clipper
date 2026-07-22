@@ -4,6 +4,7 @@ import importlib
 import logging
 import os
 import time
+import uuid
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -13,6 +14,7 @@ logger = logging.getLogger("whisper_processor")
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="whisper-worker", version="1.0.0")
+INTERNAL_ERROR_MESSAGE = "Transcription failed while processing this request."
 
 _MODEL_CACHE: dict[tuple[str, str, str], object] = {}
 _RUNTIME_VALIDATION: dict[str, object] = {"ok": True, "missing": []}
@@ -66,6 +68,7 @@ class TranscribeResponse(BaseModel):
     elapsed_seconds: float | None = None
     error: str | None = None
     stage: str | None = None
+    diagnostic_id: str | None = None
 
 
 def _resolve(value: str | None, env_key: str, default: str) -> str:
@@ -118,5 +121,15 @@ def transcribe(req: TranscribeRequest) -> TranscribeResponse:
         )
         return TranscribeResponse(success=True, transcript=transcript, elapsed_seconds=elapsed)
     except Exception as exc:
-        logger.exception("whisper_transcription_request_failed error=%s", str(exc))
-        return TranscribeResponse(success=False, error=str(exc)[:200], stage="whisper")
+        diagnostic_id = uuid.uuid4().hex
+        logger.exception(
+            "whisper_transcription_request_failed diagnostic_id=%s error=%s",
+            diagnostic_id,
+            str(exc),
+        )
+        return TranscribeResponse(
+            success=False,
+            error=INTERNAL_ERROR_MESSAGE,
+            stage="whisper",
+            diagnostic_id=diagnostic_id,
+        )

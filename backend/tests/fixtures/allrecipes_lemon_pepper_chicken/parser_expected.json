@@ -62,8 +62,143 @@
     }
   ],
   "image_url": "https://www.allrecipes.com/thmb/tK4kXzIXZngCN5hVtM9JcpXd7Kg=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/creamy-lemon-pepper-parmesan-chicken-PICS-Beauty-4x3-7f55e655659d4babb45fdff48e2b1e0a.jpg",
+  "ingredients_structured": [
+    {
+      "raw": "8 boneless, skinless chicken thighs",
+      "quantity": 8.0,
+      "unit": null,
+      "name": "boneless, skinless chicken thighs",
+      "note": null,
+      "display_quantity": "8",
+      "display_unit": null,
+      "display_name": "boneless, skinless chicken thighs",
+      "display_text": "8 boneless, skinless chicken thighs"
+    },
+    {
+      "raw": "1 1/2 teaspoon ground black pepper, divided",
+      "quantity": 1.5,
+      "unit": "teaspoon",
+      "name": "ground black pepper, divided",
+      "note": null,
+      "display_quantity": "1 1/2",
+      "display_unit": "teaspoons",
+      "display_name": "ground black pepper, divided",
+      "display_text": "1 1/2 teaspoons ground black pepper, divided"
+    },
+    {
+      "raw": "3/4 teaspoon salt, divided",
+      "quantity": 0.75,
+      "unit": "teaspoon",
+      "name": "salt, divided",
+      "note": null,
+      "display_quantity": "3/4",
+      "display_unit": "teaspoon",
+      "display_name": "salt, divided",
+      "display_text": "3/4 teaspoon salt, divided"
+    },
+    {
+      "raw": "2 tablespoons olive oil",
+      "quantity": 2.0,
+      "unit": "tablespoon",
+      "name": "olive oil",
+      "note": null,
+      "display_quantity": "2",
+      "display_unit": "tablespoons",
+      "display_name": "olive oil",
+      "display_text": "2 tablespoons olive oil"
+    },
+    {
+      "raw": "1 medium shallot, chopped",
+      "quantity": 1.0,
+      "unit": null,
+      "name": "medium shallot, chopped",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": null,
+      "display_name": "medium shallot, chopped",
+      "display_text": "1 medium shallot, chopped"
+    },
+    {
+      "raw": "3 garlic cloves, minced",
+      "quantity": 3.0,
+      "unit": null,
+      "name": "garlic cloves, minced",
+      "note": null,
+      "display_quantity": "3",
+      "display_unit": null,
+      "display_name": "garlic cloves, minced",
+      "display_text": "3 garlic cloves, minced"
+    },
+    {
+      "raw": "1 cup chicken broth",
+      "quantity": 1.0,
+      "unit": "cup",
+      "name": "chicken broth",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "cup",
+      "display_name": "chicken broth",
+      "display_text": "1 cup chicken broth"
+    },
+    {
+      "raw": "1 cup heavy cream",
+      "quantity": 1.0,
+      "unit": "cup",
+      "name": "heavy cream",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "cup",
+      "display_name": "heavy cream",
+      "display_text": "1 cup heavy cream"
+    },
+    {
+      "raw": "1/2 cup grated Parmesan cheese",
+      "quantity": 0.5,
+      "unit": "cup",
+      "name": "grated Parmesan cheese",
+      "note": null,
+      "display_quantity": "1/2",
+      "display_unit": "cup",
+      "display_name": "grated Parmesan cheese",
+      "display_text": "1/2 cup grated Parmesan cheese"
+    },
+    {
+      "raw": "1 teaspoon lemon zest",
+      "quantity": 1.0,
+      "unit": "teaspoon",
+      "name": "lemon zest",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "teaspoon",
+      "display_name": "lemon zest",
+      "display_text": "1 teaspoon lemon zest"
+    },
+    {
+      "raw": "Chopped fresh parsley, for garnish",
+      "quantity": null,
+      "unit": null,
+      "name": "Chopped fresh parsley, for garnish",
+      "note": null,
+      "display_quantity": null,
+      "display_unit": null,
+      "display_name": "Chopped fresh parsley, for garnish",
+      "display_text": "Chopped fresh parsley, for garnish"
+    },
+    {
+      "raw": "Lemon wedges, for serving",
+      "quantity": null,
+      "unit": null,
+      "name": "Lemon wedges, for serving",
+      "note": null,
+      "display_quantity": null,
+      "display_unit": null,
+      "display_name": "Lemon wedges, for serving",
+      "display_text": "Lemon wedges, for serving"
+    }
+  ],
   "_selected_source": "jsonld",
   "_selected_reason": "jsonld-default",
+  "_instruction_groups_source": "jsonld",
   "_parser_counts": {
     "jsonld": {
       "ingredients": 12,
@@ -72,15 +207,15 @@
       "instruction_groups": 1
     },
     "dom": {
-      "ingredients": 0,
+      "ingredients": 12,
       "instructions": 0,
-      "ingredient_groups": 0,
+      "ingredient_groups": 1,
       "instruction_groups": 0
     },
     "wprm": {
-      "ingredients": 0,
+      "ingredients": 12,
       "instructions": 0,
-      "ingredient_groups": 0,
+      "ingredient_groups": 1,
       "instruction_groups": 0
     }
   },
@@ -150,10 +285,41 @@
       ]
     },
     "dom": {
-      "ingredients": [],
+      "ingredients": [
+        "8 skinless, boneless chicken thighs",
+        "freshly , divided 1 1/2 teaspoons ground black pepper",
+        ", divided 3/4 teaspoon salt",
+        "2 tablespoons olive oil",
+        "1 medium shallot, chopped",
+        "minced 3 garlic cloves,",
+        "1 cup chicken broth",
+        "1 cup heavy cream",
+        "freshly 1/2 cup grated Parmesan cheese",
+        "1 teaspoon lemon zest",
+        "chopped for garnish fresh parsley,",
+        "lemon wedges, for serving"
+      ],
       "instructions": [],
       "image_url": "https://www.allrecipes.com/thmb/tK4kXzIXZngCN5hVtM9JcpXd7Kg=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/creamy-lemon-pepper-parmesan-chicken-PICS-Beauty-4x3-7f55e655659d4babb45fdff48e2b1e0a.jpg",
-      "ingredient_groups": [],
+      "ingredient_groups": [
+        {
+          "title": "",
+          "items": [
+            "8 skinless, boneless chicken thighs",
+            "freshly , divided 1 1/2 teaspoons ground black pepper",
+            ", divided 3/4 teaspoon salt",
+            "2 tablespoons olive oil",
+            "1 medium shallot, chopped",
+            "minced 3 garlic cloves,",
+            "1 cup chicken broth",
+            "1 cup heavy cream",
+            "freshly 1/2 cup grated Parmesan cheese",
+            "1 teaspoon lemon zest",
+            "chopped for garnish fresh parsley,",
+            "lemon wedges, for serving"
+          ]
+        }
+      ],
       "instruction_groups": [],
       "prep_time": "5 mins",
       "cook_time": "20 mins",
@@ -164,10 +330,41 @@
     },
     "wprm": {
       "title": "Creamy Lemon Pepper Parmesan Chicken",
-      "ingredients": [],
+      "ingredients": [
+        "8 skinless, boneless chicken thighs",
+        "freshly , divided 1 1/2 teaspoons ground black pepper",
+        ", divided 3/4 teaspoon salt",
+        "2 tablespoons olive oil",
+        "1 medium shallot, chopped",
+        "minced 3 garlic cloves,",
+        "1 cup chicken broth",
+        "1 cup heavy cream",
+        "freshly 1/2 cup grated Parmesan cheese",
+        "1 teaspoon lemon zest",
+        "chopped for garnish fresh parsley,",
+        "lemon wedges, for serving"
+      ],
       "instructions": [],
       "image_url": "https://www.allrecipes.com/thmb/tK4kXzIXZngCN5hVtM9JcpXd7Kg=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/creamy-lemon-pepper-parmesan-chicken-PICS-Beauty-4x3-7f55e655659d4babb45fdff48e2b1e0a.jpg",
-      "ingredient_groups": [],
+      "ingredient_groups": [
+        {
+          "title": "",
+          "items": [
+            "8 skinless, boneless chicken thighs",
+            "freshly , divided 1 1/2 teaspoons ground black pepper",
+            ", divided 3/4 teaspoon salt",
+            "2 tablespoons olive oil",
+            "1 medium shallot, chopped",
+            "minced 3 garlic cloves,",
+            "1 cup chicken broth",
+            "1 cup heavy cream",
+            "freshly 1/2 cup grated Parmesan cheese",
+            "1 teaspoon lemon zest",
+            "chopped for garnish fresh parsley,",
+            "lemon wedges, for serving"
+          ]
+        }
+      ],
       "instruction_groups": [],
       "servings": "4",
       "prep_time": "5 minutes",

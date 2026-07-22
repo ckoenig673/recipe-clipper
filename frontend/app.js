@@ -922,20 +922,28 @@ function storeRecipeMeasurementMode(recipe, mode) {
 function renderDetailIngredients(recipe) {
   if (!detailIngredientsEl) return;
   const ingredientGroups = sanitizeIngredientGroups(recipe?.ingredient_groups);
-  const groupedMarkup = ingredientGroups
-    .map((group) => {
-      const groupTitle = String(group?.title || "").trim();
-      const titleMarkup = groupTitle && !isGenericRecipeSectionTitle(groupTitle, "items")
-        ? `<li class="detail-group-title"><strong>${escapeHtml(groupTitle)}</strong></li>`
-        : "";
-      const itemsMarkup = (Array.isArray(group?.items) ? group.items : [])
-        .map((item) => `<li>${escapeHtml(formatIngredientLine(item))}</li>`)
-        .join("");
-      return `${titleMarkup}${itemsMarkup}`;
-    })
-    .join("");
+  clearElement(detailIngredientsEl);
 
-  detailIngredientsEl.innerHTML = groupedMarkup || "<li class=\"detail-empty-item\">No ingredients available.</li>";
+  ingredientGroups.forEach((group) => {
+    const groupTitle = String(group?.title || "").trim();
+    if (groupTitle && !isGenericRecipeSectionTitle(groupTitle, "items")) {
+      const titleItem = createElement("li", { className: "detail-group-title" });
+      const titleStrong = createElement("strong", { text: groupTitle });
+      titleItem.appendChild(titleStrong);
+      detailIngredientsEl.appendChild(titleItem);
+    }
+
+    (Array.isArray(group?.items) ? group.items : []).forEach((item) => {
+      detailIngredientsEl.appendChild(createElement("li", { text: formatIngredientLine(item) }));
+    });
+  });
+
+  if (!detailIngredientsEl.childElementCount) {
+    detailIngredientsEl.appendChild(createElement("li", {
+      className: "detail-empty-item",
+      text: "No ingredients available."
+    }));
+  }
 }
 
 function setDetailConvertMode(nextMode) {
@@ -2062,8 +2070,8 @@ function isGenericRecipeSectionTitle(title, type) {
   return genericTitlesByType[type]?.has(normalizedTitle) || false;
 }
 
-function renderGroupedList(groups, itemKey) {
-  if (!Array.isArray(groups) || !groups.length) return "";
+function buildGroupedListNodes(groups, itemKey) {
+  if (!Array.isArray(groups) || !groups.length) return [];
   const isInstructionList = itemKey === "steps";
   const formatInstructionTitle = (rawTitle) => {
     const cleaned = String(rawTitle || "")
@@ -2075,26 +2083,30 @@ function renderGroupedList(groups, itemKey) {
       .toLowerCase()
       .replace(/\b([a-z])/g, (match, letter) => letter.toUpperCase());
   };
-  return groups
-    .map((group) => {
-      const title = isInstructionList
-        ? formatInstructionTitle(group?.title)
-        : String(group?.title || "").trim();
-      const entries = Array.isArray(group?.[itemKey]) ? group[itemKey] : [];
-      const itemsMarkup = entries
-        .map((entry) => {
-          const entryClass = isInstructionList ? " class=\"detail-instruction-step\"" : "";
-          return `<li${entryClass}>${escapeHtml(entry)}</li>`;
-        })
-        .join("");
-      if (!itemsMarkup) return "";
-      const shouldRenderTitle = title && !isGenericRecipeSectionTitle(title, itemKey);
-      const titleMarkup = shouldRenderTitle
-        ? `<li class="${isInstructionList ? "detail-instruction-group-title" : "detail-group-title"}">${escapeHtml(title)}</li>`
-        : "";
-      return `${titleMarkup}${itemsMarkup}`;
-    })
-    .join("");
+  return groups.flatMap((group) => {
+    const title = isInstructionList
+      ? formatInstructionTitle(group?.title)
+      : String(group?.title || "").trim();
+    const entries = Array.isArray(group?.[itemKey]) ? group[itemKey] : [];
+    if (!entries.length) return [];
+
+    const nodes = [];
+    const shouldRenderTitle = title && !isGenericRecipeSectionTitle(title, itemKey);
+    if (shouldRenderTitle) {
+      nodes.push(createElement("li", {
+        className: isInstructionList ? "detail-instruction-group-title" : "detail-group-title",
+        text: title
+      }));
+    }
+
+    entries.forEach((entry) => {
+      nodes.push(createElement("li", {
+        className: isInstructionList ? "detail-instruction-step" : "",
+        text: entry
+      }));
+    });
+    return nodes;
+  });
 }
 
 function renderModalIngredientPreview(groups, fallbackIngredients = []) {
@@ -2535,26 +2547,40 @@ function isNeedsReviewMetadataFallback(payload) {
   return !hasUsableRecipeMetadata(payload);
 }
 
+function normalizeHostname(hostname) {
+  return String(hostname || "").trim().replace(/\.+$/, "").toLowerCase();
+}
+
+function hostnameMatchesDomain(hostname, expectedDomain) {
+  const normalizedHost = normalizeHostname(hostname);
+  const normalizedDomain = normalizeHostname(expectedDomain);
+  if (!normalizedHost || !normalizedDomain) return false;
+  return normalizedHost === normalizedDomain || normalizedHost.endsWith(`.${normalizedDomain}`);
+}
+
+function parseHostname(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+  try {
+    return normalizeHostname(new URL(normalized).hostname);
+  } catch (_) {
+    return "";
+  }
+}
+
 function isSocialShareUrl(value) {
-  const normalized = String(value || "").toLowerCase();
+  const host = parseHostname(value);
   return (
-    normalized.includes("facebook.com") ||
-    normalized.includes("fb.watch") ||
-    normalized.includes("instagram.com") ||
-    normalized.includes("instagr.am")
+    hostnameMatchesDomain(host, "facebook.com") ||
+    hostnameMatchesDomain(host, "fb.watch") ||
+    hostnameMatchesDomain(host, "instagram.com") ||
+    hostnameMatchesDomain(host, "instagr.am")
   );
 }
 
 function isFacebookInternalUrl(value) {
-  const normalized = String(value || "").trim();
-  if (!normalized) return false;
-  try {
-    const parsed = new URL(normalized);
-    const host = parsed.hostname.toLowerCase();
-    return host === "facebook.com" || host.endsWith(".facebook.com") || host === "fb.watch";
-  } catch (_) {
-    return normalized.toLowerCase().includes("facebook.com") || normalized.toLowerCase().includes("fb.watch");
-  }
+  const host = parseHostname(value);
+  return hostnameMatchesDomain(host, "facebook.com") || hostnameMatchesDomain(host, "fb.watch");
 }
 
 function isFacebookReelOrShareUrl(value) {
@@ -2562,13 +2588,12 @@ function isFacebookReelOrShareUrl(value) {
   if (!normalized) return false;
   try {
     const parsed = new URL(normalized);
-    const host = parsed.hostname.toLowerCase();
-    if (!(host === "facebook.com" || host.endsWith(".facebook.com"))) return false;
+    const host = normalizeHostname(parsed.hostname);
+    if (!hostnameMatchesDomain(host, "facebook.com")) return false;
     const path = parsed.pathname.toLowerCase();
     return path.startsWith("/reel/") || path.startsWith("/share/");
   } catch (_) {
-    const lowered = normalized.toLowerCase();
-    return lowered.includes("facebook.com/reel/") || lowered.includes("facebook.com/share/");
+    return false;
   }
 }
 
@@ -3109,6 +3134,52 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function clearElement(element) {
+  if (!element) return;
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
+
+function appendChildren(element, children) {
+  if (!element || !Array.isArray(children)) return;
+  children.forEach((child) => {
+    if (child) element.appendChild(child);
+  });
+}
+
+function createElement(tagName, options = {}) {
+  const element = document.createElement(tagName);
+  const {
+    className = "",
+    text = null,
+    htmlFor = "",
+    attributes = {},
+    dataset = {},
+    properties = {}
+  } = options;
+
+  if (className) element.className = className;
+  if (text !== null && text !== undefined) element.textContent = String(text);
+  if (htmlFor) element.htmlFor = htmlFor;
+  Object.entries(attributes).forEach(([name, value]) => {
+    if (value === null || value === undefined || value === false) return;
+    if (value === true) {
+      element.setAttribute(name, "");
+      return;
+    }
+    element.setAttribute(name, String(value));
+  });
+  Object.entries(dataset).forEach(([key, value]) => {
+    if (value === null || value === undefined) return;
+    element.dataset[key] = String(value);
+  });
+  Object.entries(properties).forEach(([key, value]) => {
+    element[key] = value;
+  });
+  return element;
 }
 
 function toDisplayHost(url) {
@@ -3906,8 +3977,14 @@ function showRecipeDetail(recipe) {
     detailRecipeNotesEl.textContent = recipeNotes;
     detailRecipeNotesSectionEl.classList.toggle("hidden", !recipeNotes);
   }
-  detailInstructionsEl.innerHTML = renderGroupedList(instructionGroups, "steps")
-    || "<li class=\"detail-empty-item\">No instructions available.</li>";
+  clearElement(detailInstructionsEl);
+  appendChildren(detailInstructionsEl, buildGroupedListNodes(instructionGroups, "steps"));
+  if (!detailInstructionsEl.childElementCount) {
+    detailInstructionsEl.appendChild(createElement("li", {
+      className: "detail-empty-item",
+      text: "No instructions available."
+    }));
+  }
   if (openOriginalButton) {
     const sourceRecipeUrl = String(recipe.resolved_recipe_url || recipe.url || "").trim();
     openOriginalButton.href = sourceRecipeUrl || "#";
@@ -5763,6 +5840,43 @@ if (generateShoppingListButton) {
   generateShoppingListButton.addEventListener("click", generateShoppingList);
 }
 
+recipesContainer?.addEventListener("click", (event) => {
+  const checkbox = event.target instanceof HTMLInputElement
+    ? event.target.closest("[data-shopping-recipe-id]")
+    : null;
+  if (!checkbox) return;
+  event.stopPropagation();
+  const recipeId = String(checkbox.dataset.shoppingRecipeId || "").trim();
+  if (!recipeId) return;
+  if (checkbox.checked) selectedShoppingRecipeIds.add(recipeId);
+  else selectedShoppingRecipeIds.delete(recipeId);
+  updateShoppingSelectionControls();
+});
+
+recipesContainer?.addEventListener("input", (event) => {
+  const checkbox = event.target instanceof HTMLInputElement
+    ? event.target.closest("[data-shopping-recipe-id]")
+    : null;
+  if (!checkbox) return;
+  const recipeId = String(checkbox.dataset.shoppingRecipeId || "").trim();
+  if (!recipeId) return;
+  if (checkbox.checked) selectedShoppingRecipeIds.add(recipeId);
+  else selectedShoppingRecipeIds.delete(recipeId);
+  updateShoppingSelectionControls();
+});
+
+recipesContainer?.addEventListener("change", (event) => {
+  const checkbox = event.target instanceof HTMLInputElement
+    ? event.target.closest("[data-shopping-recipe-id]")
+    : null;
+  if (!checkbox) return;
+  const recipeId = String(checkbox.dataset.shoppingRecipeId || "").trim();
+  if (!recipeId) return;
+  if (checkbox.checked) selectedShoppingRecipeIds.add(recipeId);
+  else selectedShoppingRecipeIds.delete(recipeId);
+  updateShoppingSelectionControls();
+});
+
 selectAllRecipesButton?.addEventListener("click", () => {
   const visibleRecipes = getVisibleCookbookRecipes();
   if (!visibleRecipes.length) return;
@@ -6205,6 +6319,534 @@ mealPlanGroceryButton?.addEventListener("click", async () => {
   if (mealPlanStatus) mealPlanStatus.classList.add("hidden");
   showGroceryPreview(applyGroceryPreviewDisplayMode(items));
 });
+
+function appendAiCleanupReviewText(container, value) {
+  const lines = String(value || "").split(/\r?\n/);
+  if (!lines.some((line) => line.trim())) {
+    container.appendChild(createElement("p", {
+      className: "ai-cleanup-review-empty",
+      text: "Empty"
+    }));
+    return;
+  }
+  lines.forEach((line) => {
+    container.appendChild(createElement("p", { text: line }));
+  });
+}
+
+function appendAiCleanupReviewList(container, items = [], ordered = false) {
+  const normalizedItems = normalizeAiCleanupTextList(items);
+  if (!normalizedItems.length) {
+    container.appendChild(createElement("p", {
+      className: "ai-cleanup-review-empty",
+      text: "Empty"
+    }));
+    return;
+  }
+  const list = createElement(ordered ? "ol" : "ul");
+  normalizedItems.forEach((item) => {
+    list.appendChild(createElement("li", { text: item }));
+  });
+  container.appendChild(list);
+}
+
+function appendAiCleanupReviewGroups(container, groups = [], key) {
+  const normalizedGroups = key === "items"
+    ? sanitizeIngredientGroups(groups)
+    : sanitizeInstructionGroups(groups);
+  if (!normalizedGroups.length) {
+    container.appendChild(createElement("p", {
+      className: "ai-cleanup-review-empty",
+      text: "Empty"
+    }));
+    return;
+  }
+  normalizedGroups.forEach((group) => {
+    const groupEl = createElement("div", { className: "ai-cleanup-review-group" });
+    const groupTitle = String(group?.title || "").trim();
+    const values = Array.isArray(group?.[key]) ? group[key] : [];
+    if (groupTitle && !isGenericRecipeSectionTitle(groupTitle, key)) {
+      groupEl.appendChild(createElement("p", {
+        className: "ai-cleanup-review-group-title",
+        text: groupTitle
+      }));
+    }
+    appendAiCleanupReviewList(groupEl, values, key === "steps");
+    container.appendChild(groupEl);
+  });
+}
+
+function appendAiCleanupReviewValue(container, type, value) {
+  if (type === "multiline") {
+    appendAiCleanupReviewText(container, value);
+    return;
+  }
+  if (type === "list") {
+    appendAiCleanupReviewList(container, value, false);
+    return;
+  }
+  if (type === "ordered-list") {
+    appendAiCleanupReviewList(container, value, true);
+    return;
+  }
+  if (type === "ingredient-groups") {
+    appendAiCleanupReviewGroups(container, value, "items");
+    return;
+  }
+  if (type === "instruction-groups") {
+    appendAiCleanupReviewGroups(container, value, "steps");
+    return;
+  }
+  appendAiCleanupReviewText(container, value);
+}
+
+function renderEditableList(containerEl, values, options = {}) {
+  if (!containerEl) return;
+  const {
+    type = "ingredient",
+    reorderMode = false
+  } = options;
+
+  clearElement(containerEl);
+  if (!values.length) {
+    const label = type === "instruction" ? "instructions" : "ingredients";
+    containerEl.appendChild(createElement("p", {
+      className: "add-recipe-helper-text",
+      text: `No ${label} yet. Use the add link below to start.`
+    }));
+    return;
+  }
+
+  const list = createElement("div", { className: "parsed-edit-list" });
+  values.forEach((value, index) => {
+    const textValue = String(value ?? "");
+    const isSection = /^#\s*\S/.test(textValue);
+    const displayValue = isSection ? textValue.replace(/^#\s*/, "") : textValue;
+    const placeholder = isSection
+      ? "Section name"
+      : (type === "instruction" ? "Add an instruction step" : "Add an ingredient");
+    const row = createElement("div", {
+      className: `parsed-edit-row ${isSection ? "parsed-edit-row-section" : ""}`.trim(),
+      dataset: { [`${type}Row`]: index, testid: `parsed-${type}-row` }
+    });
+
+    const field = type === "instruction"
+      ? createElement("textarea", {
+        className: isSection ? "parsed-section-input" : "",
+        dataset: { [`${type}Input`]: index, ...(isSection ? { [`${type}Section`]: "true" } : {}) },
+        attributes: {
+          rows: isSection ? "1" : "2",
+          placeholder,
+          "aria-label": isSection ? "instruction section" : `${type} ${index + 1}`
+        }
+      })
+      : createElement("input", {
+        className: isSection ? "parsed-section-input" : "",
+        dataset: { [`${type}Input`]: index, ...(isSection ? { [`${type}Section`]: "true" } : {}) },
+        attributes: {
+          type: "text",
+          placeholder,
+          "aria-label": isSection ? "ingredient section" : `${type} ${index + 1}`
+        }
+      });
+    field.value = displayValue;
+    row.appendChild(field);
+
+    const actions = createElement("div", { className: "parsed-edit-actions" });
+    actions.appendChild(createElement("button", {
+      className: "parsed-row-button",
+      text: isSection ? "↩ Row" : "§",
+      dataset: { [`${type}ConvertSection`]: index },
+      attributes: {
+        type: "button",
+        title: isSection ? `Convert to ${type}` : `Convert to ${type} section`,
+        "aria-label": isSection ? `Convert to ${type}` : `Convert to ${type} section`
+      }
+    }));
+    if (reorderMode) {
+      actions.appendChild(createElement("button", {
+        className: "parsed-row-button",
+        text: "↑",
+        dataset: { [`${type}Up`]: index },
+        attributes: { type: "button", "aria-label": `Move ${type} up` }
+      }));
+      actions.appendChild(createElement("button", {
+        className: "parsed-row-button",
+        text: "↓",
+        dataset: { [`${type}Down`]: index },
+        attributes: { type: "button", "aria-label": `Move ${type} down` }
+      }));
+    }
+    actions.appendChild(createElement("button", {
+      className: "parsed-row-button parsed-row-delete-button",
+      text: "✕",
+      dataset: { [`${type}Delete`]: index },
+      attributes: { type: "button", "aria-label": `Remove ${type}` }
+    }));
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+  containerEl.appendChild(list);
+}
+
+function renderAiCleanupReview(review) {
+  if (!aiCleanupReviewChanges) return;
+  clearElement(aiCleanupReviewChanges);
+  if (!review?.changes?.length) {
+    aiCleanupReviewChanges.appendChild(createElement("p", {
+      className: "ai-cleanup-review-no-changes",
+      text: "No meaningful improvements recommended."
+    }));
+    return;
+  }
+
+  review.changes.forEach(({ key, label, type }) => {
+    const section = createElement("section", {
+      className: "ai-cleanup-review-section",
+      dataset: { aiCleanupField: key }
+    });
+    section.appendChild(createElement("h4", { text: label }));
+    section.appendChild(createElement("p", {
+      className: "ai-cleanup-review-explanation",
+      text: getAiCleanupReviewExplanation({ key, label, type }, review)
+    }));
+    const grid = createElement("div", { className: "ai-cleanup-review-grid" });
+    [
+      { label: "Current", value: review.current[key] },
+      { label: "Proposed", value: review.proposed[key] }
+    ].forEach((column) => {
+      const columnEl = createElement("div", { className: "ai-cleanup-review-column" });
+      columnEl.appendChild(createElement("span", {
+        className: "ai-cleanup-review-label",
+        text: column.label
+      }));
+      const valueEl = createElement("div", { className: "ai-cleanup-review-value" });
+      appendAiCleanupReviewValue(valueEl, type, column.value);
+      columnEl.appendChild(valueEl);
+      grid.appendChild(columnEl);
+    });
+    section.appendChild(grid);
+    aiCleanupReviewChanges.appendChild(section);
+  });
+}
+
+function renderShoppingList(payload = {}) {
+  const activeItems = Array.isArray(payload.active_items) ? payload.active_items : [];
+  const checkedItems = Array.isArray(payload.checked_items) ? payload.checked_items : [];
+  const sources = Array.isArray(payload.sources) ? payload.sources : [];
+  if (shoppingListCount) {
+    shoppingListCount.textContent = `${activeItems.length} active item${activeItems.length === 1 ? "" : "s"}`;
+  }
+  if (shoppingListItems) {
+    clearElement(shoppingListItems);
+    const emptyText = !checkedItems.length
+      ? "No grocery items yet. Add ingredients from a recipe."
+      : "No active grocery items.";
+    if (activeItems.length) {
+      activeItems.forEach((item) => {
+        const listItem = createElement("li", { className: "shopping-list-item" });
+        const label = createElement("label");
+        const input = createElement("input", {
+          attributes: { type: "checkbox" },
+          dataset: { groceryItemId: item.id }
+        });
+        if (item.checked) input.checked = true;
+        label.appendChild(input);
+        label.appendChild(createElement("span", { text: item.display_text || item.name || "" }));
+        listItem.appendChild(label);
+        shoppingListItems.appendChild(listItem);
+      });
+    } else {
+      shoppingListItems.appendChild(createElement("li", {
+        className: "detail-empty-item",
+        text: emptyText
+      }));
+    }
+  }
+  if (checkedGrocerySection) checkedGrocerySection.classList.toggle("hidden", !checkedItems.length);
+  if (checkedGroceryCount) checkedGroceryCount.textContent = `${checkedItems.length} item${checkedItems.length === 1 ? "" : "s"}`;
+  if (checkedGroceryItems) {
+    clearElement(checkedGroceryItems);
+    checkedItems.forEach((item) => {
+      const listItem = createElement("li", { className: "shopping-list-item grocery-item-checked" });
+      const label = createElement("label");
+      const input = createElement("input", {
+        attributes: { type: "checkbox" },
+        dataset: { groceryItemId: item.id }
+      });
+      input.checked = true;
+      label.appendChild(input);
+      label.appendChild(createElement("span", { text: item.display_text || item.name || "" }));
+      listItem.appendChild(label);
+      checkedGroceryItems.appendChild(listItem);
+    });
+  }
+  if (grocerySourceCards) {
+    clearElement(grocerySourceCards);
+    sources.forEach((source) => {
+      const card = createElement("div", { className: "grocery-source-card" });
+      card.appendChild(createElement("button", {
+        className: "grocery-source-link",
+        text: source.title || "Recipe",
+        dataset: { grocerySourceOpen: source.id },
+        attributes: { type: "button" }
+      }));
+      card.appendChild(createElement("button", {
+        className: "grocery-source-remove",
+        text: "×",
+        dataset: { grocerySourceRemove: source.id },
+        attributes: {
+          type: "button",
+          "aria-label": `Remove ${source.title || "recipe"}`
+        }
+      }));
+      grocerySourceCards.appendChild(card);
+    });
+    grocerySourceCards.classList.toggle("hidden", activeItems.length + checkedItems.length === 0 || sources.length === 0);
+  }
+  if (clearGroceryListButton) clearGroceryListButton.classList.toggle("hidden", activeItems.length + checkedItems.length === 0);
+}
+
+async function loadMealPlanWeek() {
+  if (mealPlanDays) {
+    clearElement(mealPlanDays);
+    mealPlanDays.appendChild(createElement("p", { text: "Loading…" }));
+  }
+  const response = await apiFetch(`${API_BASE}/meal-plan?start_date=${formatIsoDate(mealPlanStartDate)}`);
+  if (!response.ok) {
+    if (mealPlanStatus) {
+      mealPlanStatus.textContent = "Could not load meal plan. Try again.";
+      mealPlanStatus.classList.remove("hidden");
+    }
+    if (mealPlanDays) clearElement(mealPlanDays);
+    return;
+  }
+  const payload = await response.json();
+  const days = Array.isArray(payload?.days) ? payload.days : [];
+  if (mealPlanStatus) mealPlanStatus.classList.add("hidden");
+  if (mealPlanWeekRange) mealPlanWeekRange.textContent = formatWeekRange(String(payload?.start_date || ""), String(payload?.end_date || ""));
+  if (mealPlanDays) {
+    clearElement(mealPlanDays);
+    days.forEach((day) => {
+      const dayItems = Array.isArray(day?.items) ? day.items : [];
+      const isToday = formatIsoDate(new Date()) === String(day?.date || "");
+      const dayLabel = formatMealPlanDayLabel(String(day?.date || "")) || String(day?.label || "");
+      const heading = isToday ? `Today • ${dayLabel}` : dayLabel;
+      const article = createElement("article", { className: "grocery-source-card meal-plan-day-card" });
+      const header = createElement("div", { className: "meal-plan-day-header" });
+      header.appendChild(createElement("strong", { className: "meal-plan-day-title", text: heading }));
+      header.appendChild(createElement("button", {
+        className: "secondary-button meal-plan-add-button",
+        text: "＋",
+        dataset: { mealPlanAdd: day?.date || "" },
+        attributes: { type: "button", "aria-label": "Add recipe" }
+      }));
+      article.appendChild(header);
+
+      const itemsWrap = createElement("div", { className: "meal-plan-day-items" });
+      if (!dayItems.length) {
+        itemsWrap.appendChild(createElement("p", { className: "grocery-empty", text: "No recipes yet" }));
+      } else {
+        dayItems.forEach((item) => {
+          const row = createElement("div", {
+            className: "meal-plan-item-row",
+            dataset: { recipeOpen: item?.recipe_id ?? "" }
+          });
+          const main = createElement("div", { className: "meal-plan-item-main" });
+          if (item?.recipe_image_url) {
+            main.appendChild(createElement("img", {
+              className: "meal-plan-item-thumb",
+              attributes: { src: item.recipe_image_url, alt: "" }
+            }));
+          } else {
+            main.appendChild(createElement("div", {
+              className: "meal-plan-item-thumb meal-plan-item-thumb-placeholder",
+              attributes: { "aria-hidden": "true" }
+            }));
+          }
+          const textWrap = createElement("div", { className: "meal-plan-item-text" });
+          textWrap.appendChild(createElement("span", {
+            className: "meal-plan-item-title",
+            text: item?.recipe_title || "Recipe"
+          }));
+          textWrap.appendChild(createElement("span", {
+            className: "meal-plan-slot-badge",
+            text: formatMealSlotLabel(item?.meal_slot),
+            dataset: { slot: String(item?.meal_slot || "dinner").toLowerCase() }
+          }));
+          if (item?.servings_override) {
+            textWrap.appendChild(createElement("span", {
+              className: "meal-plan-servings-note",
+              text: `Servings: ${String(item.servings_override)}`
+            }));
+          }
+          main.appendChild(textWrap);
+          row.appendChild(main);
+          row.appendChild(createElement("button", {
+            className: "grocery-source-remove meal-plan-remove-button",
+            text: "×",
+            dataset: { mealPlanRemove: item?.id ?? "" },
+            attributes: { type: "button", "aria-label": "Remove planned recipe" }
+          }));
+          itemsWrap.appendChild(row);
+        });
+      }
+      article.appendChild(itemsWrap);
+      mealPlanDays.appendChild(article);
+    });
+  }
+}
+
+function showGroceryPreview(items) {
+  pendingGroceryPreviewItems = Array.isArray(items) ? items : [];
+  const multipleSources = new Set(
+    pendingGroceryPreviewItems
+      .map((item) => getPreviewItemSource(item)?.recipe_id)
+      .filter((value) => value !== null && value !== undefined)
+  ).size > 1;
+  if (groceryPreviewItems) {
+    clearElement(groceryPreviewItems);
+    if (!pendingGroceryPreviewItems.length) {
+      groceryPreviewItems.appendChild(createElement("p", {
+        className: "add-recipe-helper-text",
+        text: "No ingredients found."
+      }));
+    } else {
+      pendingGroceryPreviewItems.forEach((item, index) => {
+        const label = createElement("label", { className: "grocery-preview-item" });
+        const checkbox = createElement("input", {
+          attributes: { type: "checkbox" },
+          dataset: { groceryPreviewIndex: index }
+        });
+        checkbox.checked = true;
+        label.appendChild(checkbox);
+        label.appendChild(createElement("span", { text: item.display_text || item.name || "" }));
+        if (multipleSources) {
+          label.appendChild(createElement("small", {
+            className: "grocery-preview-source",
+            text: getPreviewItemSource(item)?.recipe_title || "Recipe"
+          }));
+        }
+        groceryPreviewItems.appendChild(label);
+      });
+    }
+  }
+  updateGroceryPreviewSelectionState();
+  if (groceryPreviewStatus) groceryPreviewStatus.classList.add("hidden");
+  if (groceryPreviewModal) {
+    groceryPreviewModal.classList.remove("hidden");
+    groceryPreviewModal.setAttribute("aria-hidden", "false");
+  }
+}
+
+function renderRecipes(recipes, container = recipesContainer) {
+  if (!container) return;
+
+  clearElement(container);
+  recipes.forEach((recipe) => {
+    const safeTitle = String(recipe.title || "Untitled recipe");
+    const imageUrl = getRecipeImage(recipe);
+    const hasImage = Boolean(imageUrl);
+    const article = createElement("article", {
+      className: "recipe-card-tile recipe-card",
+      dataset: { cardOpenId: recipe.id },
+      attributes: {
+        role: "button",
+        tabindex: "0",
+        "aria-label": `Open ${safeTitle}`
+      }
+    });
+    const selectionLabel = createElement("label", {
+      className: `recipe-select-checkbox ${shoppingSelectionMode ? "" : "hidden"}`.trim(),
+      attributes: { "aria-label": `Select ${safeTitle}` }
+    });
+    const checkbox = createElement("input", {
+      attributes: { type: "checkbox" },
+      dataset: { shoppingRecipeId: recipe.id }
+    });
+    checkbox.checked = selectedShoppingRecipeIds.has(String(recipe.id));
+    selectionLabel.appendChild(checkbox);
+    article.appendChild(selectionLabel);
+
+    const media = createElement("div", { className: "recipe-card-media" });
+    const image = createElement("img", {
+      className: `recipe-card-image ${hasImage ? "" : "hidden"}`.trim(),
+      attributes: {
+        src: hasImage ? imageUrl : "",
+        alt: `${safeTitle} image`,
+        loading: "lazy"
+      }
+    });
+    const placeholder = createElement("div", {
+      className: `recipe-card-placeholder ${hasImage ? "hidden" : ""}`.trim(),
+      attributes: { "aria-hidden": "true" }
+    });
+    placeholder.appendChild(createElement("span", { className: "recipe-card-placeholder-icon", text: "🍽" }));
+    media.appendChild(image);
+    media.appendChild(placeholder);
+    media.appendChild(createElement("span", { className: "card-media-overlay", attributes: { "aria-hidden": "true" } }));
+    article.appendChild(media);
+
+    const content = createElement("div", { className: "recipe-card-content" });
+    content.appendChild(createElement("h3", {
+      className: "recipe-card-title",
+      text: safeTitle,
+      attributes: { title: safeTitle }
+    }));
+    const prepTime = String(recipe.prep_time || "").trim();
+    const cookTime = String(recipe.cook_time || "").trim();
+    if (prepTime || cookTime) {
+      const meta = createElement("div", { className: "recipe-card-meta" });
+      if (prepTime) meta.appendChild(createElement("span", { className: "recipe-card-meta-item", text: `Prep ${prepTime}` }));
+      if (cookTime) meta.appendChild(createElement("span", { className: "recipe-card-meta-item", text: `Cook ${cookTime}` }));
+      content.appendChild(meta);
+    }
+    article.appendChild(content);
+    container.appendChild(article);
+  });
+
+  container.querySelectorAll("[data-card-open-id]").forEach((card) => {
+    card.addEventListener("click", () => {
+      if (shoppingSelectionMode) return;
+      const recipe = recipes.find((entry) => String(entry.id) === card.dataset.cardOpenId);
+      if (recipe) openRecipe(recipe);
+    });
+
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      if (shoppingSelectionMode) return;
+      const recipe = recipes.find((entry) => String(entry.id) === card.dataset.cardOpenId);
+      if (recipe) openRecipe(recipe);
+    });
+  });
+
+  container.querySelectorAll("[data-shopping-recipe-id]").forEach((input) => {
+    const syncSelectionState = () => {
+      const recipeId = String(input.dataset.shoppingRecipeId || "").trim();
+      if (!recipeId) return;
+      if (input.checked) selectedShoppingRecipeIds.add(recipeId);
+      else selectedShoppingRecipeIds.delete(recipeId);
+      updateShoppingSelectionControls();
+    };
+
+    input.addEventListener("click", (event) => {
+      event.stopPropagation();
+      syncSelectionState();
+    });
+    input.addEventListener("input", syncSelectionState);
+    input.addEventListener("change", syncSelectionState);
+  });
+
+  container.querySelectorAll(".recipe-card-image").forEach((imageEl) => {
+    imageEl.addEventListener("error", () => {
+      imageEl.classList.add("hidden");
+      const media = imageEl.closest(".recipe-card-media");
+      const placeholder = media?.querySelector(".recipe-card-placeholder");
+      if (placeholder) placeholder.classList.remove("hidden");
+    });
+  });
+}
 
 // on load
 window.addEventListener("load", async () => {

@@ -10,6 +10,9 @@ from typing import Optional
 from urllib.parse import parse_qs, unquote, urlparse
 
 import requests
+from .html_sanitization import iter_script_elements
+from .hostname_matching import hostname_matches_any, parse_hostname
+from .url_validation import safe_get
 
 logger = logging.getLogger(__name__)
 
@@ -88,10 +91,7 @@ class SocialResolutionResult:
 
 
 def _host_matches(host: str, candidates: tuple[str, ...]) -> bool:
-    normalized = (host or "").lower().strip()
-    if not normalized:
-        return False
-    return any(normalized == candidate or normalized.endswith(f".{candidate}") for candidate in candidates)
+    return hostname_matches_any(host, candidates)
 
 
 def _is_external_url(url: str) -> bool:
@@ -99,7 +99,7 @@ def _is_external_url(url: str) -> bool:
         parsed = urlparse(url)
     except Exception:
         return False
-    host = (parsed.netloc or "").lower().strip()
+    host = parse_hostname(url)
     return parsed.scheme in ("http", "https") and bool(host) and not _host_matches(host, SOCIAL_INTERNAL_HOSTS)
 
 
@@ -116,7 +116,7 @@ def _social_destination_rejection_reason(url: str) -> str:
         return "urlparse_failed"
     if parsed.scheme not in ("http", "https"):
         return "unsupported_scheme"
-    host = (parsed.netloc or "").lower().strip()
+    host = parse_hostname(value)
     if not host:
         return "missing_host"
     if _host_matches(host, SOCIAL_INTERNAL_HOSTS):
@@ -159,7 +159,7 @@ def _decode_social_redirect(url: str) -> str:
         parsed = urlparse(value)
     except Exception:
         return value
-    host = (parsed.netloc or "").lower().strip()
+    host = parse_hostname(value)
     params = parse_qs(parsed.query)
     if _host_matches(host, ("l.facebook.com", "lm.facebook.com", "l.instagram.com")):
         wrapped = (params.get("u") or [""])[0]
@@ -244,7 +244,7 @@ def _candidate_score(url: str) -> float:
     lowered = url.lower()
     parsed = urlparse(url)
     path = (parsed.path or "").lower()
-    host = (parsed.netloc or "").lower().strip()
+    host = parse_hostname(url)
     points = 0.0
 
     if "/recipe/" in path or "/recipes/" in path:
@@ -300,12 +300,10 @@ def _pick_first_strong_candidate(candidates: list[str]) -> Optional[str]:
 
 def _fetch_url(url: str, retries: int = 3) -> tuple[str, str]:
     last_error: Exception | None = None
-    session = requests.Session()
-    session.max_redirects = MAX_REDIRECTS
     for attempt in range(1, retries + 1):
         headers = {**REQUEST_HEADERS, "User-Agent": MOBILE_SAFARI_USER_AGENT}
         try:
-            response = session.get(url, allow_redirects=True, timeout=8, headers=headers)
+            response = safe_get(url, timeout=8, headers=headers, max_redirects=MAX_REDIRECTS)
             final_url = str(response.url or "").strip()
             logger.info("social-resolver fetch_success attempt=%d source_url=%s final_url=%s", attempt, url, final_url)
             return final_url, response.text or ""
@@ -319,9 +317,7 @@ def _fetch_url(url: str, retries: int = 3) -> tuple[str, str]:
 
 def _fetch_url_for_user_agent(url: str, user_agent: str) -> tuple[str, str]:
     headers = {**REQUEST_HEADERS, "User-Agent": user_agent}
-    session = requests.Session()
-    session.max_redirects = MAX_REDIRECTS
-    response = session.get(url, allow_redirects=True, timeout=8, headers=headers)
+    response = safe_get(url, timeout=8, headers=headers, max_redirects=MAX_REDIRECTS)
     final_url = str(response.url or "").strip()
     logger.info("social-resolver fetch_user_agent source_url=%s final_url=%s", url, final_url)
     return final_url, response.text or ""
@@ -496,14 +492,10 @@ def _fetch_with_playwright(url: str) -> tuple[Optional[str], list[str]]:
     add_candidates(
         [
             url_match.group(0)
-            for script_match in re.finditer(
-                r'<script\b[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-                html,
-                flags=re.IGNORECASE | re.DOTALL,
-            )
+            for _, script_content in iter_script_elements(html, "application/ld+json")
             for url_match in re.finditer(
                 r"https?://[^\s\"'<>]+",
-                unescape(script_match.group(1)),
+                unescape(script_content),
                 flags=re.IGNORECASE,
             )
         ],
@@ -513,10 +505,10 @@ def _fetch_with_playwright(url: str) -> tuple[Optional[str], list[str]]:
     add_candidates(
         [
             url_match.group(0)
-            for script_match in re.finditer(r"<script\b[^>]*>(.*?)</script>", html, flags=re.IGNORECASE | re.DOTALL)
+            for _, script_content in iter_script_elements(html)
             for url_match in re.finditer(
                 r"https?://[^\s\"'<>]+",
-                unescape(script_match.group(1)),
+                unescape(script_content),
                 flags=re.IGNORECASE,
             )
         ],
@@ -612,12 +604,8 @@ def _fetch_with_selenium(url: str) -> tuple[Optional[str], list[str]]:
             return matched, collected
 
     # Stage B: JSON-LD scripts.
-    for script_match in re.finditer(
-        r'<script\b[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-        html,
-        flags=re.IGNORECASE | re.DOTALL,
-    ):
-        script_content = unescape(script_match.group(1))
+    for _, raw_script_content in iter_script_elements(html, "application/ld+json"):
+        script_content = unescape(raw_script_content)
         try:
             parsed_script = json.loads(script_content)
             script_text = json.dumps(parsed_script, ensure_ascii=False)
@@ -1049,7 +1037,7 @@ def resolve_instagram_url(url: str) -> SocialResolutionResult:
 
 def resolve_social_url(url: str) -> SocialResolutionResult:
     parsed = urlparse(url or "")
-    host = (parsed.netloc or "").lower().strip()
+    host = parse_hostname(url)
     if _host_matches(host, ("facebook.com", "fb.watch")):
         return resolve_facebook_url(url)
     if _host_matches(host, ("instagram.com", "instagr.am")):

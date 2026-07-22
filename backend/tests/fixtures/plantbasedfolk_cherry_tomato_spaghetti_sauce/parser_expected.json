@@ -4,7 +4,7 @@
     "2 tbsps Olive oil",
     "1 small-medium Onion (finely diced)",
     "3 cloves Garlic (crushed)",
-    "750 g Cherry tomatoes (halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.)",
+    "750 g Cherry tomatoes (halved or quartered This recipe has been tested only using cherry tomatoes Please tips above.)",
     "1 tsp Dried oregano flakes",
     "¼ tsp Chili pepper flakes (or to taste)",
     "1½ tsps Salt (or to taste)",
@@ -31,7 +31,7 @@
         "2 tbsps Olive oil",
         "1 small-medium Onion (finely diced)",
         "3 cloves Garlic (crushed)",
-        "750 g Cherry tomatoes (halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.)",
+        "750 g Cherry tomatoes (halved or quartered This recipe has been tested only using cherry tomatoes Please tips above.)",
         "1 tsp Dried oregano flakes",
         "¼ tsp Chili pepper flakes (or to taste)",
         "1½ tsps Salt (or to taste)",
@@ -52,8 +52,121 @@
     }
   ],
   "image_url": "https://plantbasedfolk.com/wp-content/uploads/2024/12/cherry-tomato-spaghetti-sauce.jpg",
+  "ingredients_structured": [
+    {
+      "raw": "2 tbsps Olive oil",
+      "quantity": 2.0,
+      "unit": null,
+      "name": "tbsps Olive oil",
+      "note": null,
+      "display_quantity": "2",
+      "display_unit": null,
+      "display_name": "tbsps Olive oil",
+      "display_text": "2 tbsps Olive oil"
+    },
+    {
+      "raw": "1 small-medium Onion (finely diced)",
+      "quantity": 1.0,
+      "unit": null,
+      "name": "small-medium Onion",
+      "note": "finely diced",
+      "display_quantity": "1",
+      "display_unit": null,
+      "display_name": "small-medium Onion",
+      "display_text": "1 small-medium Onion (finely diced)"
+    },
+    {
+      "raw": "3 cloves Garlic (crushed)",
+      "quantity": 3.0,
+      "unit": null,
+      "name": "cloves Garlic",
+      "note": "crushed",
+      "display_quantity": "3",
+      "display_unit": null,
+      "display_name": "cloves Garlic",
+      "display_text": "3 cloves Garlic (crushed)"
+    },
+    {
+      "raw": "750 g Cherry tomatoes (halved or quartered This recipe has been tested only using cherry tomatoes Please tips above.)",
+      "quantity": 750.0,
+      "unit": "gram",
+      "name": "Cherry tomatoes",
+      "note": "halved or quartered This recipe has been tested only using cherry tomatoes Please tips above.",
+      "display_quantity": "750",
+      "display_unit": "grams",
+      "display_name": "Cherry tomatoes",
+      "display_text": "750 grams Cherry tomatoes (halved or quartered This recipe has been tested only using cherry tomatoes Please tips above.)"
+    },
+    {
+      "raw": "1 tsp Dried oregano flakes",
+      "quantity": 1.0,
+      "unit": "teaspoon",
+      "name": "Dried oregano flakes",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "teaspoon",
+      "display_name": "Dried oregano flakes",
+      "display_text": "1 teaspoon Dried oregano flakes"
+    },
+    {
+      "raw": "¼ tsp Chili pepper flakes (or to taste)",
+      "quantity": 0.25,
+      "unit": "teaspoon",
+      "name": "Chili pepper flakes",
+      "note": "or to taste",
+      "display_quantity": "1/4",
+      "display_unit": "teaspoon",
+      "display_name": "Chili pepper flakes",
+      "display_text": "1/4 teaspoon Chili pepper flakes (or to taste)"
+    },
+    {
+      "raw": "1½ tsps Salt (or to taste)",
+      "quantity": 1.5,
+      "unit": null,
+      "name": "tsps Salt",
+      "note": "or to taste",
+      "display_quantity": "1 1/2",
+      "display_unit": null,
+      "display_name": "tsps Salt",
+      "display_text": "1 1/2 tsps Salt (or to taste)"
+    },
+    {
+      "raw": "¼ tsp Cracked black pepper",
+      "quantity": 0.25,
+      "unit": "teaspoon",
+      "name": "Cracked black pepper",
+      "note": null,
+      "display_quantity": "1/4",
+      "display_unit": "teaspoon",
+      "display_name": "Cracked black pepper",
+      "display_text": "1/4 teaspoon Cracked black pepper"
+    },
+    {
+      "raw": "1 cup Water",
+      "quantity": 1.0,
+      "unit": "cup",
+      "name": "Water",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": "cup",
+      "display_name": "Water",
+      "display_text": "1 cup Water"
+    },
+    {
+      "raw": "1 handful Fresh basil leaves",
+      "quantity": 1.0,
+      "unit": null,
+      "name": "handful Fresh basil leaves",
+      "note": null,
+      "display_quantity": "1",
+      "display_unit": null,
+      "display_name": "handful Fresh basil leaves",
+      "display_text": "1 handful Fresh basil leaves"
+    }
+  ],
   "_selected_source": "jsonld",
   "_selected_reason": "jsonld-default",
+  "_instruction_groups_source": "jsonld",
   "_parser_counts": {
     "jsonld": {
       "ingredients": 10,
@@ -62,15 +175,15 @@
       "instruction_groups": 1
     },
     "dom": {
-      "ingredients": 10,
+      "ingredients": 0,
       "instructions": 0,
-      "ingredient_groups": 1,
+      "ingredient_groups": 0,
       "instruction_groups": 0
     },
     "wprm": {
-      "ingredients": 10,
+      "ingredients": 0,
       "instructions": 0,
-      "ingredient_groups": 1,
+      "ingredient_groups": 0,
       "instruction_groups": 0
     }
   },
@@ -130,37 +243,10 @@
       ]
     },
     "dom": {
-      "ingredients": [
-        "2 tbsps Olive oil",
-        "1 small-medium Onion finely diced",
-        "3 cloves Garlic crushed",
-        "750 g Cherry tomatoes halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.",
-        "1 teaspoon Dried oregano flakes",
-        "¼ teaspoon Chili pepper flakes or to taste",
-        "1½ tsps Salt or to taste",
-        "¼ teaspoon Cracked black pepper",
-        "1 cup Water",
-        "1 handful Fresh basil leaves"
-      ],
+      "ingredients": [],
       "instructions": [],
       "image_url": "https://plantbasedfolk.com/wp-content/uploads/2024/12/cherry-tomato-spaghetti-sauce.jpg",
-      "ingredient_groups": [
-        {
-          "title": "",
-          "items": [
-            "2 tbsps Olive oil",
-            "1 small-medium Onion finely diced",
-            "3 cloves Garlic crushed",
-            "750 g Cherry tomatoes halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.",
-            "1 teaspoon Dried oregano flakes",
-            "¼ teaspoon Chili pepper flakes or to taste",
-            "1½ tsps Salt or to taste",
-            "¼ teaspoon Cracked black pepper",
-            "1 cup Water",
-            "1 handful Fresh basil leaves"
-          ]
-        }
-      ],
+      "ingredient_groups": [],
       "instruction_groups": [],
       "prep_time": "",
       "cook_time": "",
@@ -171,37 +257,10 @@
     },
     "wprm": {
       "title": "Cherry Tomato Spaghetti Sauce",
-      "ingredients": [
-        "2 tbsps Olive oil",
-        "1 small-medium Onion finely diced",
-        "3 cloves Garlic crushed",
-        "750 g Cherry tomatoes halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.",
-        "1 teaspoon Dried oregano flakes",
-        "¼ teaspoon Chili pepper flakes or to taste",
-        "1½ tsps Salt or to taste",
-        "¼ teaspoon Cracked black pepper",
-        "1 cup Water",
-        "1 handful Fresh basil leaves"
-      ],
+      "ingredients": [],
       "instructions": [],
       "image_url": "https://plantbasedfolk.com/wp-content/uploads/2024/12/cherry-tomato-spaghetti-sauce.jpg",
-      "ingredient_groups": [
-        {
-          "title": "",
-          "items": [
-            "2 tbsps Olive oil",
-            "1 small-medium Onion finely diced",
-            "3 cloves Garlic crushed",
-            "750 g Cherry tomatoes halved or quartered. This recipe has been tested only using cherry tomatoes. Please tips above.",
-            "1 teaspoon Dried oregano flakes",
-            "¼ teaspoon Chili pepper flakes or to taste",
-            "1½ tsps Salt or to taste",
-            "¼ teaspoon Cracked black pepper",
-            "1 cup Water",
-            "1 handful Fresh basil leaves"
-          ]
-        }
-      ],
+      "ingredient_groups": [],
       "instruction_groups": [],
       "servings": "3, 3 cups",
       "prep_time": "5 minutes",

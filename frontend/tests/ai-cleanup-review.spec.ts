@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { cleanupRecipesAddedSince, fetchRecipeIds } from './e2e-recipe-cleanup';
 
 const LOGIN_EMAIL = process.env.E2E_EMAIL;
 const LOGIN_PASSWORD = process.env.E2E_PASSWORD;
@@ -281,6 +282,13 @@ test.beforeEach(async ({ page, context }) => {
   });
   await openFreshApp(page);
   await maybeLogin(page);
+  baselineRecipeIds = await fetchRecipeIds(page);
+});
+
+let baselineRecipeIds = new Set<number>();
+
+test.afterEach(async ({ page }, testInfo) => {
+  await cleanupRecipesAddedSince(page, baselineRecipeIds, `ai-cleanup-review:${testInfo.title}`);
 });
 
 test('saved recipe AI cleanup review can be canceled without saving', async ({ page }, testInfo) => {
@@ -526,4 +534,139 @@ test('saved AI cleanup review ignores suspicious single-letter unit fragments in
       ]
     }
   ]);
+});
+
+test('recipe text stays inert across recipe detail and AI cleanup review rendering', async ({ page }, testInfo) => {
+  const log = (message: string) => console.log(`[ai-cleanup-review:${testInfo.title}] ${message}`);
+  const seed = `${testInfo.workerIndex}-${Date.now()}`;
+  const recipe = {
+    ...buildRecipe(seed),
+    title: `Literal <script>window.__recipeXss = 'title'</script> ${seed}`,
+    notes: [
+      `First line <img src=x onerror="window.__recipeXss='notes'">`,
+      'Second line &lt;strong&gt;keep whisking&lt;/strong&gt;'
+    ].join('\n'),
+    ingredient_groups: [
+      {
+        title: 'Sauce <svg onload="window.__recipeXss=\'group\'"></svg>',
+        items: [
+          '1 cup sugar <img src=x onerror="window.__recipeXss=\'ingredient\'">',
+          '2 tbsp butter &lt;em&gt;softened&lt;/em&gt;'
+        ]
+      }
+    ],
+    ingredients: [
+      '1 cup sugar <img src=x onerror="window.__recipeXss=\'ingredient\'">',
+      '2 tbsp butter &lt;em&gt;softened&lt;/em&gt;'
+    ],
+    instruction_groups: [
+      {
+        title: 'Steps <script>window.__recipeXss = "steps"</script>',
+        steps: [
+          'Mix <svg onload="window.__recipeXss=\'step1\'"></svg> thoroughly.',
+          'Fold in chips &lt;strong&gt;gently&lt;/strong&gt;.'
+        ]
+      }
+    ],
+    instructions: [
+      'Mix <svg onload="window.__recipeXss=\'step1\'"></svg> thoroughly.',
+      'Fold in chips &lt;strong&gt;gently&lt;/strong&gt;.'
+    ]
+  };
+  const recipeId = await createRecipe(page, recipe, log);
+  const preview = {
+    ...recipe,
+    title: `Reviewed <img src=x onerror="window.__recipeXss='preview-title'"> ${seed}`,
+    notes: [
+      'Cleanup note <svg onload="window.__recipeXss=\'preview-notes\'"></svg>',
+      'Still show &lt;u&gt;literal formatting&lt;/u&gt;'
+    ].join('\n'),
+    ingredient_groups: [
+      {
+        title: 'Reviewed section <script>window.__recipeXss = "preview-group"</script>',
+        items: [
+          '1 cup sugar <script>window.__recipeXss = "preview-ingredient"</script>',
+          '2 tbsp butter &lt;em&gt;softened&lt;/em&gt;'
+        ]
+      }
+    ],
+    ingredients: [
+      '1 cup sugar <script>window.__recipeXss = "preview-ingredient"</script>',
+      '2 tbsp butter &lt;em&gt;softened&lt;/em&gt;'
+    ],
+    instruction_groups: [
+      {
+        title: 'Reviewed steps <img src=x onerror="window.__recipeXss=\'preview-steps\'">',
+        steps: [
+          'Mix <script>window.__recipeXss = "preview-step-1"</script> thoroughly.',
+          'Fold in chips &lt;strong&gt;gently&lt;/strong&gt;.'
+        ]
+      }
+    ],
+    instructions: [
+      'Mix <script>window.__recipeXss = "preview-step-1"</script> thoroughly.',
+      'Fold in chips &lt;strong&gt;gently&lt;/strong&gt;.'
+    ]
+  };
+
+  await page.route(`**/api/recipes/${recipeId}/ai-cleanup`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: 'AI cleanup ready for review',
+        payload_source: 'ai_cleanup',
+        preview
+      })
+    });
+  });
+
+  await openRecipeCard(page, recipeId, log);
+  await expect(page.locator('#detail-title')).toHaveText(recipe.title);
+  await expect(page.locator('#detail-recipe-notes')).toHaveText(recipe.notes);
+  await expect(page.locator('#detail-ingredients')).toContainText('Sauce');
+  await expect(page.locator('#detail-ingredients')).toContainText('1 cup sugar');
+  await expect(page.locator('#detail-ingredients')).toContainText('softened');
+  await expect(page.locator('#detail-instructions')).toContainText('Steps');
+  await expect(page.locator('#detail-instructions')).toContainText('Mix');
+  await expect(page.locator('#detail-instructions')).toContainText('Fold in chips');
+  expect(await page.evaluate(() => (window as Window & { __recipeXss?: string }).__recipeXss ?? null)).toBeNull();
+  expect(await page.locator('#recipe-detail-view script, #recipe-detail-view svg, #recipe-detail-view img[onerror]').count()).toBe(0);
+
+  await page.locator('#detail-ai-cleanup-button').click();
+
+  await expect(page.locator('#ai-cleanup-review-modal')).toBeVisible();
+  await expect(page.locator('[data-ai-cleanup-field="title"]')).toContainText(preview.title);
+  await expect(page.locator('[data-ai-cleanup-field="notes"]')).toContainText('Cleanup note <svg onload="window.__recipeXss=\'preview-notes\'"></svg>');
+  await expect(page.locator('[data-ai-cleanup-field="notes"]')).toContainText('Still show &lt;u&gt;literal formatting&lt;/u&gt;');
+  await expect(page.locator('[data-ai-cleanup-field="ingredient_groups"]')).toContainText('Reviewed section');
+  await expect(page.locator('[data-ai-cleanup-field="ingredient_groups"]')).toContainText('1 cup sugar');
+  await expect(page.locator('[data-ai-cleanup-field="instruction_groups"]')).toContainText('Reviewed steps');
+  await expect(page.locator('[data-ai-cleanup-field="instruction_groups"]')).toContainText('Mix');
+  expect(await page.locator('#ai-cleanup-review-modal script, #ai-cleanup-review-modal svg, #ai-cleanup-review-modal img[onerror]').count()).toBe(0);
+  expect(await page.evaluate(() => (window as Window & { __recipeXss?: string }).__recipeXss ?? null)).toBeNull();
+
+  await page.locator('#accept-ai-cleanup-review-button').click();
+
+  await expect(page.locator('#ai-cleanup-review-modal')).toBeHidden();
+  await expect(page.locator('#detail-title')).toHaveText(preview.title);
+  await expect(page.locator('#detail-recipe-notes')).toHaveText(preview.notes);
+  await expect(page.locator('#detail-ingredients')).toContainText('Reviewed section');
+  await expect(page.locator('#detail-ingredients')).toContainText('1 cup sugar');
+  await expect(page.locator('#detail-instructions')).toContainText('Reviewed Steps');
+  await expect(page.locator('#detail-instructions')).toContainText('Mix');
+  expect(await page.locator('#recipe-detail-view script, #recipe-detail-view svg, #recipe-detail-view img[onerror]').count()).toBe(0);
+  expect(await page.evaluate(() => (window as Window & { __recipeXss?: string }).__recipeXss ?? null)).toBeNull();
+
+  const savedRecipe = await fetchRecipeFromList(page, recipeId);
+  expect(savedRecipe.title).toBe(preview.title);
+  expect(savedRecipe.notes).toBe(preview.notes);
+  expect(savedRecipe.ingredients?.join('\n') || '').toContain('1 cup sugar');
+  expect(savedRecipe.ingredients?.join('\n') || '').toContain('softened');
+  expect(savedRecipe.ingredients?.join('\n') || '').not.toContain('<script');
+  expect(savedRecipe.ingredients?.join('\n') || '').not.toContain('<img');
+  expect(savedRecipe.instructions?.join('\n') || '').toContain('Mix');
+  expect(savedRecipe.instructions?.join('\n') || '').toContain('Fold in chips');
+  expect(savedRecipe.instructions?.join('\n') || '').not.toContain('<script');
+  expect(savedRecipe.instructions?.join('\n') || '').not.toContain('<svg');
 });
