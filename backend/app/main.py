@@ -9918,7 +9918,6 @@ def extract_metadata(
                     ytdlp_description="",
                     ytdlp_webpage_url="",
                     ytdlp_description_urls=[],
-                    ytdlp_description_urls=[],
                 )
             extracted_url = (social_resolution.resolved_url or "").strip()
             if not fallback_reason:

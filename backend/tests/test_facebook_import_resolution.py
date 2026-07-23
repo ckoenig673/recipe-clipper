@@ -6,7 +6,11 @@ import pytest
 
 from backend.app import main
 from backend.app.social_resolver import SocialResolutionResult
-from backend.app.social_video_pipeline import TranscriptPipelineResult, YtDlpExtractError
+from backend.app.social_video_pipeline import (
+    TranscriptPipelineResult,
+    TranscriptPipelineStageError,
+    YtDlpExtractError,
+)
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "facebook_watch_1736159050691633"
@@ -307,15 +311,22 @@ def test_social_resolver_exception_still_runs_recovery_and_transcript_fallback()
         "backend.app.main._recover_recipe_url_from_social_signals",
         return_value=("", ""),
     ) as mock_recovery, patch(
+        "backend.app.main.run_social_video_transcript_pipeline",
+        side_effect=TranscriptPipelineStageError("ffmpeg", RuntimeError("ffmpeg exploded")),
+    ) as mock_transcript_pipeline, patch(
         "backend.app.main.looks_like_recipe_text",
         return_value=False,
     ):
         payload = main.extract_metadata(url=social_url, _={})
 
     mock_recovery.assert_called_once()
+    mock_transcript_pipeline.assert_called_once()
     assert payload["status"] == "partial"
     assert payload["url"] == social_url
-    assert payload["reason"] == "We couldn’t extract the shared link directly, and recovery attempts did not find a recipe."
+    assert payload["reason"] == "We downloaded the shared video, but audio extraction failed."
+    assert payload["social_metadata"]["error"] == "social_resolver_failed"
+    assert payload["social_metadata"]["transcript_pipeline_stage"] == "ffmpeg"
+    assert "resolver exploded" not in json.dumps(payload)
 
 
 def test_social_transcript_pipeline_returns_recipe_when_caption_not_recipe_like():
