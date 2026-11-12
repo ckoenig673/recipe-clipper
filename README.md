@@ -25,7 +25,7 @@ Recipe Clipper uses an [invite-only login](docs/screenshots/recipe-clipper-login
 
 ## Project Status
 
-Version `1.0.0` is the documented public V1 baseline. Until a matching GitHub tag and release are published, use the latest code on `main`.
+The current public release is [`v1.0.0`](https://github.com/ckoenig673/recipe-clipper/releases/tag/v1.0.0). Use the release tag for reproducible deployments and `main` for the latest reviewed changes.
 
 The current regression baseline includes backend tests, frontend helper tests, and Playwright coverage for authentication, URL import, OCR import, pasted recipes, AI Cleanup review, mobile behavior, cookbook layout, and bulk recipe actions.
 
