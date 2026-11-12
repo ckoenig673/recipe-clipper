@@ -1,6 +1,8 @@
 # Changelog
 
-## Version 1.0.0 - Initial Public Release
+## [1.0.0] - Unreleased
+
+Initial public release baseline. The release remains unreleased until the protected `main` commit is tagged and a matching GitHub release is published.
 
 - Added recipe import support for public URLs, pasted full-text recipes, uploaded images with OCR, shared social-video links, and fully manual recipe entry.
 - Added optional AI Cleanup for saved recipes, including a review flow that shows structured proposed changes before users apply them.

@@ -34,3 +34,6 @@ jobs:
         run: |
           mkdir -p /tmp/recipe-clipper-ci
           pytest backend/tests/
+
+      - name: Check release version consistency
+        run: python scripts/check_release_versions.py
