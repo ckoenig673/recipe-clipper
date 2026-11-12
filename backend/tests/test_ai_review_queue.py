@@ -1348,6 +1348,21 @@ def test_modal_preview_payload_normalizes_numbered_steps_within_groups():
     assert preview["instructions"] == ["1. Cook beef.", "2. Mix sauce."]
 
 
+def test_normalize_instruction_steps_keeps_multi_digit_step_numbers_intact():
+    numbered_blob = " ".join(f"{number}. Step {number}." for number in range(1, 11))
+
+    normalized = main._normalize_instruction_steps([numbered_blob])
+
+    assert len(normalized) == 10
+    assert normalized[-1] == "10. Step 10."
+
+
+def test_normalize_instruction_steps_does_not_split_sentence_ending_quantity():
+    instruction = "Bake for 10. Remove from the oven and cool."
+
+    assert main._normalize_instruction_steps([instruction]) == [instruction]
+
+
 def test_modal_preview_payload_keeps_group_sections_separate_while_splitting_numbered_blobs():
     parsed_json = {
         "instruction_groups": [

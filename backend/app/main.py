@@ -6584,13 +6584,23 @@ def _normalize_instruction_steps(steps) -> list[str]:
         if not text:
             continue
 
-        numbered_parts = re.split(r"(?=\d+\.\s)", text)
-        if len(numbered_parts) > 1:
-            normalized.extend(
-                _clean_text(part)
-                for part in numbered_parts
-                if _clean_text(part)
+        markers = list(re.finditer(r"(?:^|(?<=[.!?])\s+)(\d{1,3})\.\s+", text))
+        marker_numbers = [int(marker.group(1)) for marker in markers]
+        has_complete_sequence = (
+            len(markers) > 1
+            and markers[0].start() == 0
+            and marker_numbers[0] == 1
+            and all(
+                current == previous + 1
+                for previous, current in zip(marker_numbers, marker_numbers[1:])
             )
+        )
+        if has_complete_sequence:
+            for index, marker in enumerate(markers):
+                end = markers[index + 1].start() if index + 1 < len(markers) else len(text)
+                part = _clean_text(text[marker.start() : end])
+                if part:
+                    normalized.append(part)
             continue
 
         normalized.append(text)
