@@ -45,6 +45,11 @@ updates:
     directory: /backend
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   - package-ecosystem: docker
     directory: /frontend
@@ -55,16 +60,31 @@ updates:
     directory: /ocr-worker
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   - package-ecosystem: docker
     directory: /social-worker
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   - package-ecosystem: docker
     directory: /whisper-worker
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   - package-ecosystem: github-actions
     directory: /
