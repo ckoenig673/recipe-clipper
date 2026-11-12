@@ -9,6 +9,7 @@
 - [Architecture overview](architecture/README.md)
 - [Manual smoke checklist](development/manual-smoke-checklist.md)
 - [Good fixture guidelines](development/good-fixture-guidelines.md)
+- [Dependency and container pinning](development/dependency-locks.md)
 - [Screenshot standards](screenshots/README.md)
 - [Release process](releases/README.md)
 - [Version 1.0.0 release notes](releases/v1.0.0.md)

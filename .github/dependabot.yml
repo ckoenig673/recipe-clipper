@@ -1,0 +1,72 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      npm-dependencies:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: monthly
+    groups:
+      backend-python:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /ocr-worker
+    schedule:
+      interval: monthly
+    groups:
+      ocr-python:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /social-worker
+    schedule:
+      interval: monthly
+    groups:
+      social-python:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /whisper-worker
+    schedule:
+      interval: monthly
+    groups:
+      whisper-python:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /ocr-worker
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /social-worker
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /whisper-worker
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
