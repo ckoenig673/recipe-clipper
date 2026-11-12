@@ -9,6 +9,7 @@
 - [Architecture overview](architecture/README.md)
 - [Manual smoke checklist](development/manual-smoke-checklist.md)
 - [Good fixture guidelines](development/good-fixture-guidelines.md)
+- [Screenshot standards](screenshots/README.md)
 
 ## Repository policies
 
@@ -27,4 +28,5 @@
 - Keep architecture and service-routing details under `docs/architecture/`.
 - Keep test-fixture and maintenance procedures under `docs/development/`.
 - Store sanitized project images and diagrams under `docs/screenshots/`.
+- Capture screenshots only from synthetic demo data and verify that no account, recipe, host, or secret information is visible.
 - Update documentation in the same pull request whenever routes, environment variables, worker names, ports, or user workflows change.
