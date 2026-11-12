@@ -1,0 +1,61 @@
+name: Feature request
+description: Suggest a focused improvement to Recipe Clipper
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: Describe the user problem first. Focused requests are easier to evaluate, test, and maintain.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Product area
+      options:
+        - Recipe capture or import
+        - Review or editing
+        - Library or cookbooks
+        - Meal planning or groceries
+        - Android share target
+        - Administration or security
+        - Documentation or developer experience
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or workflow gap
+      description: Explain what is difficult today and who it affects.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the behavior you would like without assuming a specific implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include existing workarounds if any.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Suggested acceptance criteria
+      placeholder: |
+        - [ ] A user can...
+        - [ ] Existing imports continue to...
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Scope checks
+      options:
+        - label: I searched existing issues for a similar request.
+          required: true
+        - label: This request is focused and does not bundle unrelated changes.
+          required: true
+        - label: The request does not depend on publishing secrets, private infrastructure, or personal data.
+          required: true
