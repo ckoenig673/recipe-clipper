@@ -6584,11 +6584,26 @@ def _normalize_instruction_steps(steps) -> list[str]:
         if not text:
             continue
 
-        markers = list(re.finditer(r"(?:^|(?<=[.!?])\s+)(\d{1,3})\.\s+", text))
-        marker_numbers = [int(marker.group(1)) for marker in markers]
+        markers: list[tuple[int, int]] = []
+        for marker in re.finditer(r"\d{1,3}\.", text):
+            marker_start = marker.start()
+            marker_end = marker.end()
+            if marker_end >= len(text) or not text[marker_end].isspace():
+                continue
+            if marker_start > 0:
+                separator_start = marker_start
+                while separator_start > 0 and text[separator_start - 1].isspace():
+                    separator_start -= 1
+                if separator_start == marker_start or separator_start == 0:
+                    continue
+                if text[separator_start - 1] not in ".!?":
+                    continue
+            markers.append((marker_start, int(marker.group(0)[:-1])))
+
+        marker_numbers = [number for _, number in markers]
         has_complete_sequence = (
             len(markers) > 1
-            and markers[0].start() == 0
+            and markers[0][0] == 0
             and marker_numbers[0] == 1
             and all(
                 current == previous + 1
@@ -6596,9 +6611,9 @@ def _normalize_instruction_steps(steps) -> list[str]:
             )
         )
         if has_complete_sequence:
-            for index, marker in enumerate(markers):
-                end = markers[index + 1].start() if index + 1 < len(markers) else len(text)
-                part = _clean_text(text[marker.start() : end])
+            for index, (marker_start, _) in enumerate(markers):
+                end = markers[index + 1][0] if index + 1 < len(markers) else len(text)
+                part = _clean_text(text[marker_start:end])
                 if part:
                     normalized.append(part)
             continue

@@ -1363,6 +1363,16 @@ def test_normalize_instruction_steps_does_not_split_sentence_ending_quantity():
     assert main._normalize_instruction_steps([instruction]) == [instruction]
 
 
+def test_normalize_instruction_steps_handles_long_whitespace_in_linear_time():
+    instruction = f"1. Mix sauce.{' ' * 100_000}2. Serve."
+
+    started = time.perf_counter()
+    normalized = main._normalize_instruction_steps([instruction])
+
+    assert time.perf_counter() - started < 1.0
+    assert normalized == ["1. Mix sauce.", "2. Serve."]
+
+
 def test_modal_preview_payload_keeps_group_sections_separate_while_splitting_numbered_blobs():
     parsed_json = {
         "instruction_groups": [
