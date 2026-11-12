@@ -1,8 +1,9 @@
 # Recipe Clipper
 
-Recipe Clipper is a self-hosted recipe capture and organization app. It imports recipes from public URLs, pasted text, images, and social videos, then lets users review, edit, organize, plan, and shop from one structured recipe library.
+[![Backend Tests](https://github.com/ckoenig673/recipe-clipper/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/ckoenig673/recipe-clipper/actions/workflows/backend-tests.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-![Recipe Clipper architecture](docs/screenshots/recipe-clipper-architecture.svg)
+Recipe Clipper is a self-hosted recipe capture and organization app. It imports recipes from public URLs, pasted text, images, and social videos, then lets users review, edit, organize, plan, and shop from one structured recipe library.
 
 ## Product Screenshot
 
@@ -10,9 +11,9 @@ The current application opens with an invite-only login screen before users acce
 
 ![Recipe Clipper login screen](docs/screenshots/recipe-clipper-login.png)
 
-## Current Release
+## Project Status
 
-Version `1.0.0` is the public V1 baseline.
+Version `1.0.0` is the documented public V1 baseline. Until a matching GitHub tag and release are published, use the latest code on `main`.
 
 The current regression baseline includes backend tests, frontend helper tests, and Playwright coverage for authentication, URL import, OCR import, pasted recipes, AI Cleanup review, mobile behavior, cookbook layout, and bulk recipe actions.
 
@@ -53,6 +54,8 @@ The current regression baseline includes backend tests, frontend helper tests, a
 - Remove grocery items by recipe source or clear completed items.
 
 ## Architecture
+
+![Recipe Clipper architecture](docs/screenshots/recipe-clipper-architecture.svg)
 
 Recipe Clipper uses a deliberately small V1 architecture:
 
