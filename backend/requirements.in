@@ -1,0 +1,13 @@
+requests
+curl-cffi==0.17.0
+fastapi
+uvicorn
+pydantic
+python-multipart
+argon2-cffi
+playwright
+selenium
+yt-dlp==2026.10.26
+beautifulsoup4
+lxml
+faster-whisper

@@ -172,6 +172,11 @@ Real credentials, cookies, and environment overrides belong in `.env`, which mus
 - `docs/development/` — regression fixture and maintenance guidance
 - `.github/` — issue, pull-request, CI, and security automation templates
 
+Python runtime and test dependencies are fully locked, Node dependencies use
+`package-lock.json`, and every Docker base image is pinned by release tag and
+immutable digest. See [dependency and container pinning](docs/development/dependency-locks.md)
+before updating dependencies or base images.
+
 ## Validation
 
 Run from the repository root:
