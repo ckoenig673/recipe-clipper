@@ -673,6 +673,70 @@ def test_normalize_ai_cleanup_prompt_payload_preserves_unmatched_parenthetical_i
     ]
 
 
+def test_normalize_ai_cleanup_prompt_payload_preserves_eighth_fractions():
+    normalized = main._normalize_ai_cleanup_prompt_payload(
+        {
+            "title": "OPTAVIA Mini Mac In A Bowl",
+            "ingredient_groups": [
+                {
+                    "title": "",
+                    "items": [
+                        "1/8 teaspoon white vinegar",
+                        "3/8 teaspoon onion powder",
+                        "5/8 cup lettuce",
+                        "7/8 ounce dill pickle slices",
+                    ],
+                }
+            ],
+            "instruction_groups": [{"title": "Instructions", "steps": ["Mix."]}],
+        }
+    )
+
+    assert normalized["ingredients"] == [
+        "1/8 teaspoon white vinegar",
+        "3/8 teaspoon onion powder",
+        "5/8 cup lettuce",
+        "7/8 ounce dill pickle slices",
+    ]
+
+
+def test_prefer_richer_preview_payload_restores_equivalent_written_fractions():
+    preview_payload = {
+        "ingredient_groups": [
+            {
+                "title": "",
+                "items": [
+                    "1/8 teaspoon White Vinegar",
+                    "1/8 teaspoon Onion Powder",
+                    "1 cup lettuce",
+                ],
+            }
+        ],
+        "instruction_groups": [{"title": "Instructions", "steps": ["Mix sauce."]}],
+    }
+    ai_payload = {
+        "ingredient_groups": [
+            {
+                "title": "",
+                "items": [
+                    "0.125 teaspoon White Vinegar",
+                    "0.125 teaspoon Onion Powder",
+                    "1 cup lettuce",
+                ],
+            }
+        ],
+        "instruction_groups": [{"title": "Instructions", "steps": ["Mix the sauce."]}],
+    }
+
+    merged = main._prefer_richer_preview_payload(preview_payload, ai_payload)
+
+    assert merged["ingredients"] == [
+        "1/8 teaspoon White Vinegar",
+        "1/8 teaspoon Onion Powder",
+        "1 cup lettuce",
+    ]
+
+
 def test_build_transcript_cleanup_prompt_includes_conservative_editor_rules():
     prompt = main._build_transcript_cleanup_prompt(
         {

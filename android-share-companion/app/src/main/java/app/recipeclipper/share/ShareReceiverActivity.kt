@@ -26,12 +26,13 @@ class ShareReceiverActivity : Activity() {
         )
 
         val params = linkedMapOf<String, String>()
+        params["share_import"] = "1"
         payload.url?.let { params["url"] = it }
         payload.title?.let { params["title"] = it }
         payload.text?.let { params["text"] = it }
 
         val finalUrl = buildTargetUrl(
-            baseUrl = Config.WEB_APP_BASE_URL,
+            baseUri = Config.webAppBaseUri,
             path = Config.SHARE_PATH,
             params = params
         )
@@ -216,16 +217,42 @@ class ShareReceiverActivity : Activity() {
             ?.trim()
     }
 
-    private fun buildTargetUrl(baseUrl: String, path: String, params: Map<String, String>): String {
-        val normalizedBase = baseUrl.trimEnd('/')
-        val normalizedPath = if (path.startsWith("/")) path else "/$path"
-        val uriBuilder = Uri.parse("$normalizedBase$normalizedPath").buildUpon()
+    private fun buildTargetUrl(baseUri: Uri, path: String, params: Map<String, String>): String {
+        val uriBuilder = joinBaseUrlAndPath(baseUri, path).buildUpon()
 
         params.forEach { (key, value) ->
             uriBuilder.appendQueryParameter(key, value)
         }
 
         return uriBuilder.build().toString()
+    }
+
+    private fun joinBaseUrlAndPath(baseUri: Uri, path: String): Uri {
+        val normalizedBaseUri = ensureTrailingSlash(baseUri)
+        val trimmedPath = path.trim()
+        if (trimmedPath.isEmpty() || trimmedPath == "/") {
+            return normalizedBaseUri
+        }
+
+        val builder = normalizedBaseUri.buildUpon()
+        trimmedPath
+            .trim('/')
+            .split('/')
+            .filter { it.isNotBlank() }
+            .forEach(builder::appendPath)
+
+        return builder.build()
+    }
+
+    private fun ensureTrailingSlash(uri: Uri): Uri {
+        val encodedPath = uri.encodedPath ?: ""
+        if (encodedPath.isEmpty() || encodedPath.endsWith("/")) {
+            return uri
+        }
+
+        return uri.buildUpon()
+            .encodedPath("$encodedPath/")
+            .build()
     }
 
     private fun sanitizeUrl(url: String): String {

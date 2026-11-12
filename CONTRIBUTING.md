@@ -46,7 +46,7 @@ Run the relevant validation commands before opening a pull request.
 Backend:
 
 ```bash
-pytest backend/tests/
+python -m pytest backend/tests/
 ```
 
 Frontend / Playwright:
@@ -68,7 +68,7 @@ Run `docker compose config` for Docker or environment-surface changes.
 If the request is validation-only or explicitly says not to change code:
 
 - Do not modify files, create files, or refactor code.
-- Run `pytest backend/tests/`.
+- Run `python -m pytest backend/tests/`.
 - Run `npm run test:e2e` when frontend or import flows are relevant.
 - Report the exact commands, pass/fail status, failing tests, and likely root cause.
 

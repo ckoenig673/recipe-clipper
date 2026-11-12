@@ -1,26 +1,69 @@
 # Recipe Clipper
 
-Recipe Clipper is a self-hosted recipe capture app for collecting recipes from links, pasted text, images, and social videos into one library. It keeps the V1 stack simple: a frontend SPA, a backend API, isolated workers for OCR and media processing, SQLite storage, and optional Ollama support for AI cleanup.
+Recipe Clipper is a self-hosted recipe capture and organization app. It imports recipes from public URLs, pasted text, images, and social videos, then lets users review, edit, organize, plan, and shop from one structured recipe library.
 
-## Release Baseline
+![Recipe Clipper architecture](docs/screenshots/recipe-clipper-architecture.svg)
 
-Version `1.0.0` is the initial public release baseline for the repository. This documentation reflects the public Docker Compose deployment and the stabilized V1 service layout.
+## Product Screenshot
 
-## What It Does
+The current application opens with an invite-only login screen before users access their recipe library.
 
-- Import recipes from normal recipe URLs.
-- Paste recipe text directly when a site is not parser-friendly.
-- Extract recipe text from photos, screenshots, and scanned cookbook pages with OCR.
-- Pull social-video content through a download plus transcript pipeline.
-- Optionally run AI Cleanup and AI review enhancement through Ollama.
-- Organize saved recipes into cookbooks.
-- Build grocery lists from recipes.
-- Support meal-planning workflows.
-- Support Android sharing through the included Android companion project.
+![Recipe Clipper login screen](docs/screenshots/recipe-clipper-login.png)
 
-## Runtime Services
+## Current Release
 
-Docker Compose starts these runtime containers:
+Version `1.0.0` is the public V1 baseline.
+
+The current regression baseline includes backend tests, frontend helper tests, and Playwright coverage for authentication, URL import, OCR import, pasted recipes, AI Cleanup review, mobile behavior, cookbook layout, and bulk recipe actions.
+
+## Features
+
+### Import and capture
+
+- Import recipes from public HTTP and HTTPS recipe URLs.
+- Paste full recipe text with deterministic title, section, notes, and list cleanup.
+- Import photos, screenshots, and scanned pages through OCR.
+- Download public social-video media and create recipes from Whisper transcripts.
+- Accept Android share-target input through the included companion project.
+- Show import-service status from Settings.
+
+### Recipe editing and organization
+
+- Review parsed recipes before saving.
+- Organize recipes into cookbooks.
+- Edit structured ingredient and instruction groups.
+- Scale displayed ingredient quantities by servings.
+- Use bulk selection, move, grocery-list, and delete actions.
+- Maintain recipe state and personal notes.
+
+### AI-assisted cleanup
+
+- Run optional AI Cleanup against the saved structured recipe.
+- Review proposed changes before applying them.
+- Cancel without modifying the saved recipe.
+- Accept meaningful structured changes only.
+- Support a no-change result when the recipe is already well organized.
+- Treat source pages and transcripts as optional supporting context rather than replacing the saved recipe.
+
+### Planning and shopping
+
+- Add recipes to a meal plan.
+- Create grocery previews from recipes or meal-plan items.
+- Maintain a checked grocery list.
+- Remove grocery items by recipe source or clear completed items.
+
+## Architecture
+
+Recipe Clipper uses a deliberately small V1 architecture:
+
+- `frontend` — nginx-hosted vanilla JavaScript SPA
+- `backend` — FastAPI API, auth, SQLite access, imports, and orchestration
+- `ocr` — Tesseract OCR worker
+- `social` — yt-dlp media download worker
+- `whisper` — faster-whisper transcription worker
+- optional Ollama — AI Cleanup and review enhancement
+
+Runtime container names:
 
 - `recipe-clipper-frontend`
 - `recipe-clipper-backend`
@@ -28,38 +71,24 @@ Docker Compose starts these runtime containers:
 - `recipe-clipper-social`
 - `recipe-clipper-whisper`
 
-Compose service names are used for container-to-container communication:
-
-- `frontend`
-- `backend`
-- `ocr`
-- `social`
-- `whisper`
-
-The backend talks to workers by Compose service name:
-
-- OCR: `http://ocr:8787/ocr/image`
-- Social video download: `http://social:8790/download/social-video` via `SOCIAL_DOWNLOADER_URL` (legacy-compatible variable name)
-- Whisper transcription: `http://whisper:8791/transcribe` via `WHISPER_PROCESSOR_URL` (legacy-compatible variable name)
-
-SQLite data is stored under `./data` and mounted into the backend container at `/app/data`.
+See the [architecture overview](docs/architecture/README.md) for the request and import flows.
 
 ## Prerequisites
 
-- Docker Engine with Docker Compose support
-- Enough local disk space for the SQLite database and downloaded media artifacts
-- A free set of local ports for the app:
+- Docker Engine with Docker Compose
+- Local disk space for SQLite and temporary media artifacts
+- Available host ports, by default:
   - `8010` frontend
   - `8015` backend
-  - `8787` OCR worker
-  - `8790` social worker
-  - `8791` Whisper worker
+  - `8787` OCR
+  - `8790` social download
+  - `8791` Whisper
 
-Ollama is optional. Recipe capture must still work when Ollama is not configured.
+Ollama is optional. Core import, save, edit, cookbook, meal-plan, and grocery-list flows work without it.
 
 ## Quick Start
 
-1. From the repository root, copy the example environment file:
+1. Copy the tracked environment template:
 
    ```bash
    cp .env.example .env
@@ -71,76 +100,86 @@ Ollama is optional. Recipe capture must still work when Ollama is not configured
    Copy-Item .env.example .env
    ```
 
-2. Edit the root `.env` file and set the required values:
-   - `AUTH_BOOTSTRAP_ADMIN_EMAIL`
-   - `AUTH_BOOTSTRAP_ADMIN_PASSWORD`
+2. Set a bootstrap administrator in `.env`:
 
-3. Review the default ports in `.env` and update them only if they conflict with your machine.
-   - If you change `FRONTEND_PORT`, also update `CORS_ALLOW_ORIGINS` to match the new frontend origin.
-   - `SOCIAL_DOWNLOADER_PORT` and `WHISPER_PROCESSOR_PORT` are legacy-compatible variable names for the current `social` and `whisper` services.
-   - Leave the worker URL variables on their Compose defaults unless you are intentionally changing service routing.
+   ```dotenv
+   AUTH_BOOTSTRAP_ADMIN_EMAIL=admin@example.local
+   AUTH_BOOTSTRAP_ADMIN_PASSWORD=replace-this-password
+   ```
 
-4. Optional: configure Ollama for AI Cleanup and AI review enhancement:
-   - `OLLAMA_BASE_URL`
-   - `OLLAMA_MODEL`
-   - Leave `OLLAMA_BASE_URL` blank to keep Ollama disabled.
+3. Optionally configure Ollama:
 
-5. From the repository root, start the stack with the tracked `docker-compose.yml`:
+   ```dotenv
+   OLLAMA_BASE_URL=http://host.docker.internal:11434
+   OLLAMA_MODEL=llama3:latest
+   ```
+
+   Leave `OLLAMA_BASE_URL` blank to disable AI-dependent actions.
+
+4. Build and start the stack:
 
    ```bash
    docker compose up -d --build
    ```
 
-6. Open the frontend in your browser:
-   - `http://localhost:8010` by default
-   - or the host port you configured with `FRONTEND_PORT`
+5. Open `http://localhost:8010` and sign in.
 
-7. Sign in with the bootstrap admin account from `.env`.
+6. Open **Settings** and confirm the import services are reachable before testing OCR or social-video imports.
 
-8. In the app, verify service reachability from the import status area in Settings before testing OCR or social-video imports.
+## Configuration
 
-## Configuration Notes
+The tracked `.env.example` documents the complete runtime surface.
 
-- `.env.example` is the tracked template. Keep real secrets in `.env`, not in version control.
-- `RECIPES_DB_PATH` defaults to `/app/data/recipes.db` inside the backend container and persists to `./data/recipes.db` on the host through Compose volume mounts.
-- `AI_REVIEW_ENABLED=true` keeps the review flow available even if Ollama is not configured.
-- When `OLLAMA_BASE_URL` is empty or Ollama is unreachable, imports still work and AI review actions fail gracefully instead of blocking recipe capture.
-- The worker variables `SOCIAL_DOWNLOADER_URL`, `WHISPER_PROCESSOR_URL`, `SOCIAL_DOWNLOADER_PORT`, and `WHISPER_PROCESSOR_PORT` are retained for backward compatibility with existing runtime configuration and tests. They still target the current `social-worker/` and `whisper-worker/` services.
-- The standard import path uses dedicated worker services:
-  - `ocr` for image OCR
-  - `social` for media download
-  - `whisper` for transcription
-- Downloaded social media artifacts are stored in `./data/social-downloads` and shared between the backend, social worker, and whisper worker.
-- `.env.example` also includes backend-only fallback transcript settings so the documented environment surface matches the runtime code, even though the normal Compose path uses the dedicated workers above.
-- Frontend cache-busting is controlled by `CACHE_BUST_VERSION` during frontend image builds.
+Important groups:
+
+- Storage: `RECIPES_DB_PATH`
+- Browser/auth: `AUTH_*`, `CORS_ALLOW_ORIGINS`
+- Worker routing: `OCR_WORKER_URL`, `SOCIAL_DOWNLOADER_URL`, `WHISPER_PROCESSOR_URL`
+- Worker ports: `OCR_WORKER_PORT`, `SOCIAL_DOWNLOADER_PORT`, `WHISPER_PROCESSOR_PORT`
+- AI: `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_TIMEOUT_SECONDS`
+- Review behavior: `AI_REVIEW_ENABLED`, `AI_REVIEW_POLL_SECONDS`
+- Social-media artifacts: `SOCIAL_VIDEO_TMP_DIR`, `SOCIAL_DOWNLOADER_OUTPUT_DIR`
+- Whisper defaults: `WHISPER_MODEL`, `WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`
+
+`SOCIAL_DOWNLOADER_*` and `WHISPER_PROCESSOR_*` are legacy-compatible environment variable names retained by the current runtime. They point to the current `social-worker` and `whisper-worker` services.
+
+Real credentials, cookies, and environment overrides belong in `.env`, which must not be committed.
 
 ## Repository Layout
 
-- `frontend/` SPA served by nginx
-- `backend/` primary API, auth, recipe CRUD, orchestration, and SQLite access
-- `ocr-worker/` OCR-only worker
-- `social-worker/` media download worker
-- `whisper-worker/` transcription worker
-- `android-share-companion/` Android share target project
-- `docs/architecture/` system documentation
-- `docs/development/` contributor and workflow documentation
+- `backend/` — API, persistence, authentication, parsers, and orchestration
+- `frontend/` — SPA, nginx configuration, PWA assets, and Playwright tests
+- `ocr-worker/` — OCR worker
+- `social-worker/` — media download worker
+- `whisper-worker/` — transcription worker
+- `android-share-companion/` — Android share-target project
+- `docs/architecture/` — architecture and runtime flows
+- `docs/development/` — regression fixture and maintenance guidance
+- `.github/` — issue, pull-request, CI, and security automation templates
 
 ## Validation
 
-Useful local validation commands:
+Run from the repository root:
 
 ```bash
 docker compose config
-pytest backend/tests/
+python -m pytest backend/tests/
+node --test frontend/tests/url-hostname-helpers.test.mjs
 npm run test:e2e
 ```
 
-`npm run test:e2e:headed` is also available for interactive Playwright debugging.
+Interactive browser run:
 
-## Additional Documentation
+```bash
+npm run test:e2e:headed
+```
 
+## Documentation
+
+- [Documentation index](docs/README.md)
 - [Architecture overview](docs/architecture/README.md)
 - [Good fixture guidelines](docs/development/good-fixture-guidelines.md)
 - [Manual smoke checklist](docs/development/manual-smoke-checklist.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
+- [Changelog](CHANGELOG.md)

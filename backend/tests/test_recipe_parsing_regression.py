@@ -1,9 +1,11 @@
 import unittest
 import time
+from pathlib import Path
 from unittest.mock import patch
 
 from bs4 import BeautifulSoup
 
+from backend.app import main
 from backend.app.main import _extract_dom_recipe_data, _extract_wprm_instruction_groups, _iter_descendants_by_tag, extract_json_ld_blocks, fetch_recipe_data_from_url
 
 
@@ -202,6 +204,13 @@ class _MockResponse:
         return None
 
 
+class _ForbiddenResponse:
+    status_code = 403
+
+    def raise_for_status(self):
+        raise RuntimeError("403 Forbidden")
+
+
 class _FakeNode:
     def __init__(self, name=None, children=None):
         self.name = name
@@ -209,6 +218,74 @@ class _FakeNode:
 
 
 class RecipeParsingRegressionTests(unittest.TestCase):
+    @patch("backend.app.main.safe_get")
+    def test_lemon_chicken_orzo_nested_graph_prefers_complete_recipe(self, mock_get):
+        fixture_path = Path(__file__).parent / "fixtures" / "lemon_chicken_orzo" / "page.html"
+        mock_get.return_value = _MockResponse(fixture_path.read_text(encoding="utf-8"))
+
+        parsed = fetch_recipe_data_from_url("https://thestayathomechef.com/lemon-chicken-and-orzo/")
+
+        self.assertEqual(parsed.get("_selected_source"), "jsonld")
+        self.assertEqual(parsed.get("title"), "Lemon Chicken and Orzo")
+        self.assertEqual(len(parsed.get("ingredients") or []), 11)
+        self.assertEqual(len(parsed.get("instructions") or []), 5)
+        self.assertEqual(parsed.get("servings"), "8 servings")
+        self.assertEqual(parsed.get("prep_time"), "15 minutes")
+        self.assertEqual(parsed.get("cook_time"), "30 minutes")
+        self.assertEqual(parsed.get("image_url"), "https://images.example.test/lemon-chicken-orzo.jpg")
+
+    @patch("backend.app.main.safe_get")
+    def test_recipe_fetch_retries_403_with_generic_browser_user_agent(self, mock_get):
+        fixture_path = Path(__file__).parent / "fixtures" / "lemon_chicken_orzo" / "page.html"
+        mock_get.side_effect = [
+            _ForbiddenResponse(),
+            _MockResponse(fixture_path.read_text(encoding="utf-8")),
+        ]
+        url = "https://thestayathomechef.com/lemon-chicken-and-orzo/?fbclid=tracking"
+
+        parsed = fetch_recipe_data_from_url(url)
+
+        self.assertEqual(parsed.get("title"), "Lemon Chicken and Orzo")
+        self.assertEqual(len(parsed.get("ingredients") or []), 11)
+        self.assertEqual(len(parsed.get("instructions") or []), 5)
+        self.assertEqual(mock_get.call_count, 2)
+        self.assertEqual(mock_get.call_args_list[1].args[0], url)
+        self.assertEqual(mock_get.call_args_list[1].kwargs["headers"]["User-Agent"], "Mozilla/5.0")
+
+    @patch("backend.app.main.safe_impersonated_get")
+    @patch("backend.app.main.safe_get")
+    def test_recipe_fetch_retries_repeated_403_with_browser_fingerprint(self, mock_get, mock_impersonated_get):
+        fixture_path = Path(__file__).parent / "fixtures" / "lemon_chicken_orzo" / "page.html"
+        mock_get.side_effect = [_ForbiddenResponse(), _ForbiddenResponse()]
+        mock_impersonated_get.return_value = _MockResponse(fixture_path.read_text(encoding="utf-8"))
+        url = "https://example.com/cloudflare-protected-recipe"
+
+        parsed = fetch_recipe_data_from_url(url)
+
+        self.assertEqual(parsed.get("title"), "Lemon Chicken and Orzo")
+        self.assertEqual(len(parsed.get("ingredients") or []), 11)
+        self.assertEqual(len(parsed.get("instructions") or []), 5)
+        mock_impersonated_get.assert_called_once_with(url, headers=main.REQUEST_HEADERS, timeout=12)
+
+    def test_lemon_chicken_orzo_wprm_dom_fallback_is_independent(self):
+        fixture_path = Path(__file__).parent / "fixtures" / "lemon_chicken_orzo" / "page.html"
+        parsed = _extract_dom_recipe_data(fixture_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(parsed.get("instruction_source"), "wprm")
+        self.assertEqual(len(parsed["ingredient_groups"][0]["items"]), 11)
+        self.assertEqual(len(parsed["instruction_groups"][0]["steps"]), 5)
+
+    def test_extract_metadata_marks_title_only_recipe_incomplete(self):
+        with patch("backend.app.main.validate_public_url"), patch(
+            "backend.app.main.fetch_recipe_data_from_url", return_value={"title": "Metadata Only"}
+        ), patch("backend.app.main.fetch_title_from_url", return_value="Metadata Only"):
+            payload = main.extract_metadata(url="https://example.com/metadata-only", current_user={})
+
+        self.assertEqual(payload["status"], "incomplete")
+        self.assertIn("no ingredients or instructions", payload["reason"].lower())
+        self.assertEqual(payload["extraction_diagnostics"]["ingredient_count"], 0)
+        self.assertEqual(payload["extraction_diagnostics"]["instruction_count"], 0)
+
     def test_extract_json_ld_blocks_ignores_oversized_non_json_script_noise_quickly(self):
         html = (
             "<html><head>"
@@ -657,6 +734,46 @@ class RecipeParsingRegressionTests(unittest.TestCase):
             [{"title": "Instructions", "steps": ["Brown the beef.", "Mix the sauce.", "Assemble the bowl."]}],
         )
         self.assertEqual(parsed.get("_instruction_groups_source"), "dom-override")
+
+    @patch("backend.app.main.safe_get")
+    def test_optavia_numbered_jsonld_blob_splits_without_dom_instructions(self, mock_get):
+        html = """
+        <html>
+        <head>
+          <script type="application/ld+json">{
+            "@context": "https://schema.org",
+            "@type": "Recipe",
+            "name": "OPTAVIA Mini Mac In A Bowl",
+            "recipeIngredient": ["1/8 teaspoon white vinegar", "1/8 teaspoon onion powder"],
+            "recipeInstructions": [
+              "1. Brown the beef. 2. Mix the sauce. 3. Assemble the bowl."
+            ]
+          }</script>
+        </head>
+        <body></body>
+        </html>
+        """
+        mock_get.return_value = _MockResponse(html)
+        dom_data = {
+            "prep_time": "",
+            "cook_time": "",
+            "total_time": "",
+            "ingredient_groups": [],
+            "instruction_groups": [],
+            "instruction_source": "dom",
+        }
+        with patch("backend.app.main._extract_dom_recipe_data", return_value=dom_data):
+            parsed = fetch_recipe_data_from_url("https://www.bigoven.com/recipe/optavia-mini-mac-in-a-bowl/2283923")
+
+        self.assertEqual(
+            parsed.get("instructions"),
+            ["1. Brown the beef.", "2. Mix the sauce.", "3. Assemble the bowl."],
+        )
+        self.assertEqual(
+            parsed.get("instruction_groups"),
+            [{"title": "Instructions", "steps": ["1. Brown the beef.", "2. Mix the sauce.", "3. Assemble the bowl."]}],
+        )
+        self.assertEqual(parsed.get("_instruction_groups_source"), "jsonld")
 
 
 if __name__ == "__main__":

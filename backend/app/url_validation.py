@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
+from curl_cffi import CurlOpt
+from curl_cffi import requests as curl_requests
 from requests.adapters import HTTPAdapter
 from urllib3 import PoolManager
 from urllib3.connection import HTTPConnection, HTTPSConnection
@@ -302,4 +304,70 @@ def safe_get(
     finally:
         if owns_session:
             active_session.close()
+    raise PublicUrlValidationError(USER_FACING_PUBLIC_URL_ERROR)
+
+
+def _curl_resolve_entry(target: _ResolvedPublicUrl, destination_ip: str) -> str:
+    address = f"[{destination_ip}]" if ":" in destination_ip else destination_ip
+    return f"{target.hostname}:{target.port}:{address}"
+
+
+def safe_impersonated_get(
+    url: str,
+    *,
+    headers: dict | None = None,
+    timeout: float = 8,
+    max_redirects: int = 5,
+    impersonate: str = "safari17_0",
+):
+    """Fetch a public URL with a browser TLS fingerprint and pinned DNS.
+
+    This is intentionally separate from ``safe_get`` so callers can reserve the
+    heavier transport for an explicit access-denied fallback. Every destination
+    and redirect receives the same public-address validation as ``safe_get``.
+    """
+    current_url = validate_public_url(url)
+    for _ in range(max_redirects + 1):
+        target = _resolve_public_url(current_url)
+        response = None
+        last_error = None
+        forbidden_response = None
+        for destination_ip in target.resolved_ips:
+            session = curl_requests.Session(
+                impersonate=impersonate,
+                curl_options={
+                    CurlOpt.RESOLVE: [_curl_resolve_entry(target, destination_ip)],
+                },
+            )
+            try:
+                candidate = session.get(
+                    target.normalized_url,
+                    headers=headers,
+                    timeout=timeout,
+                    allow_redirects=False,
+                )
+                if candidate.status_code == 403:
+                    forbidden_response = candidate
+                    continue
+                response = candidate
+                break
+            except curl_requests.RequestsError as exc:
+                last_error = exc
+            finally:
+                session.close()
+
+        if response is None:
+            response = forbidden_response
+        if response is None:
+            if last_error is not None:
+                raise last_error
+            raise PublicUrlValidationError(USER_FACING_PUBLIC_URL_ERROR)
+
+        if response.status_code in {301, 302, 303, 307, 308}:
+            location = (response.headers.get("Location") or "").strip()
+            if not location:
+                return response
+            current_url = validate_public_url(urljoin(current_url, location))
+            continue
+        return response
     raise PublicUrlValidationError(USER_FACING_PUBLIC_URL_ERROR)
