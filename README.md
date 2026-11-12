@@ -5,11 +5,23 @@
 
 Recipe Clipper is a self-hosted recipe capture and organization app. It imports recipes from public URLs, pasted text, images, and social videos, then lets users review, edit, organize, plan, and shop from one structured recipe library.
 
-## Product Screenshot
+[Quick Start](#quick-start) · [Documentation](docs/README.md) · [Architecture](docs/architecture/README.md) · [Security](SECURITY.md)
 
-The current application opens with an invite-only login screen before users access their recipe library.
+## At a Glance
 
-![Recipe Clipper login screen](docs/screenshots/recipe-clipper-login.png)
+- Capture recipes from URLs, pasted text, images, and public social videos.
+- Review structured imports before saving them to the library.
+- Organize recipes into cookbooks, meal plans, and grocery lists.
+- Run locally with Docker Compose and optional Ollama-assisted cleanup.
+- Use the Android companion project as a share target.
+
+## Product Preview
+
+The library view below was captured from an isolated local demo populated entirely with synthetic recipes and artwork.
+
+![Recipe Clipper cookbook with four synthetic recipes](docs/screenshots/recipe-clipper-library.jpg)
+
+Recipe Clipper uses an [invite-only login](docs/screenshots/recipe-clipper-login.png) before users access their library.
 
 ## Project Status
 
@@ -186,3 +198,4 @@ npm run test:e2e:headed
 - [Contributing guide](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 - [Changelog](CHANGELOG.md)
+- [Screenshot standards](docs/screenshots/README.md)
