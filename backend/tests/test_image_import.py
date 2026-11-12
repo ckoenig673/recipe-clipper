@@ -613,6 +613,43 @@ def test_split_instruction_sentences_handles_long_ocr_heading_runs_quickly():
     ]
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("Mix ingredients &", "Mix ingredients"),
+        ("Mix ingredients & .", "Mix ingredients"),
+        ("Mix & serve.", "Mix & serve."),
+        ("Mix ingredients.", "Mix ingredients."),
+    ],
+)
+def test_strip_trailing_ampersand_marker_preserves_meaningful_ampersands(value, expected):
+    assert main._strip_trailing_ampersand_marker(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("#dinner #quick_meal", True),
+        ("#dinner#quick", True),
+        ("#", False),
+        ("#dinner tonight", False),
+        ("Add #dinner", False),
+    ],
+)
+def test_is_hashtag_only_text(value, expected):
+    assert main._is_hashtag_only_text(value) is expected
+
+
+def test_instruction_cleanup_helpers_handle_long_untrusted_text_in_linear_time():
+    trailing_marker = f"Mix ingredients{' ' * 100_000}&{' ' * 100_000}."
+    hashtag_run = "#quick_meal" * 20_000
+
+    started = time.perf_counter()
+    assert main._strip_trailing_ampersand_marker(trailing_marker) == "Mix ingredients"
+    assert main._is_hashtag_only_text(hashtag_run)
+    assert time.perf_counter() - started < 1.0
+
+
 def test_parse_social_caption_recipe_for_ocr_prefers_uppercase_food_title_line_even_with_noisy_title_hint():
     ocr_text = "Suackiw' Buack Cakes TOPSY-TURVY BANANA CRUNCH CAKE"
 

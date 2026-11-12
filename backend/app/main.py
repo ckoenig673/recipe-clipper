@@ -1758,6 +1758,36 @@ def _insert_sentence_break_before_phrases(value: str, phrases: tuple[str, ...]) 
     return "".join(rebuilt)
 
 
+def _strip_trailing_ampersand_marker(value: str) -> str:
+    """Remove an OCR artifact such as ``" & ."`` without regex backtracking."""
+    candidate = value.rstrip()
+    if candidate.endswith("."):
+        candidate = candidate[:-1].rstrip()
+    if not candidate.endswith("&"):
+        return value
+    return candidate[:-1].rstrip()
+
+
+def _is_hashtag_only_text(value: str) -> bool:
+    """Return whether value contains only hashtag tokens, using a linear scan."""
+    if not value:
+        return False
+
+    index = 0
+    while index < len(value):
+        if value[index] != "#":
+            return False
+        index += 1
+        token_start = index
+        while index < len(value) and (value[index] == "_" or value[index].isalnum()):
+            index += 1
+        if index == token_start:
+            return False
+        while index < len(value) and value[index].isspace():
+            index += 1
+    return True
+
+
 def _split_instruction_sentences(text: str) -> list[str]:
     value = _clean_text(text)[:MAX_REGEX_TEXT_CHARS]
     if not value:
@@ -1819,7 +1849,7 @@ def _split_instruction_sentences(text: str) -> list[str]:
     for piece in pieces:
         entry = _clean_text(piece).strip(" -")
         entry = re.sub(r"^\d+[\.)]\s*", "", entry)
-        entry = re.sub(r"\s*&\s*\.?\s*$", "", entry)
+        entry = _strip_trailing_ampersand_marker(entry)
         entry = re.sub(r"\.{2,}$", ".", entry)
         if entry and not re.search(r"[.!?]$", entry):
             entry = f"{entry}."
@@ -1833,7 +1863,7 @@ def _split_instruction_sentences(text: str) -> list[str]:
             continue
         if entry.lower().startswith("#"):
             continue
-        if re.fullmatch(r"(?:#\w+\s*)+", entry):
+        if _is_hashtag_only_text(entry):
             continue
         steps.append(entry)
     merged_steps: list[str] = []
