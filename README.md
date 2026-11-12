@@ -183,6 +183,22 @@ node --test frontend/tests/url-hostname-helpers.test.mjs
 npm run test:e2e
 ```
 
+`npm run test:e2e` is the local live-system suite. It intentionally retains
+coverage that can use the running Recipe Clipper backend, Ollama, OCR, Whisper,
+and live recipe websites. GitHub does not replace or modify that validation
+path.
+
+The required GitHub browser check uses a separate deterministic configuration:
+
+```bash
+npm run test:e2e:ci
+```
+
+That command runs only UI suites whose API boundaries are fully mocked. It does
+not contact Ollama, OCR, Whisper, the Recipe Clipper backend, or external recipe
+websites. Keep live-service specs in the default local suite unless a dedicated
+self-hosted workflow is added for them.
+
 Interactive browser run:
 
 ```bash
