@@ -7,7 +7,7 @@ python-multipart
 argon2-cffi
 playwright
 selenium
-yt-dlp
+yt-dlp==2026.10.26
 beautifulsoup4
 lxml
 faster-whisper
