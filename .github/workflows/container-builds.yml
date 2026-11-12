@@ -50,7 +50,14 @@ jobs:
 
             case "$service" in
               frontend)
-                docker run --rm --entrypoint nginx "$image" -t
+                network="recipe-clipper-ci-${GITHUB_RUN_ID}"
+                helper="recipe-clipper-backend-dns-${GITHUB_RUN_ID}"
+                docker network create "$network"
+                docker run --detach --name "$helper" --network "$network" \
+                  --network-alias backend --entrypoint sleep "$image" 120
+                docker run --rm --network "$network" --entrypoint nginx "$image" -t
+                docker rm --force "$helper"
+                docker network rm "$network"
                 ;;
               backend)
                 docker run --rm --entrypoint python "$image" -m pip check
