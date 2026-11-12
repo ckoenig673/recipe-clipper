@@ -46,7 +46,7 @@ services:
       context: ./frontend
       args:
         # Replaces cache-bust placeholders in frontend build artifacts.
-        CACHE_BUST_VERSION: ${CACHE_BUST_VERSION:-20260511-1}
+        CACHE_BUST_VERSION: ${CACHE_BUST_VERSION:-1.0.0}
     container_name: recipe-clipper-frontend
     ports:
       - "${FRONTEND_PORT:-8010}:80"
