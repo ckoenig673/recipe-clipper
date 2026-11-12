@@ -69,7 +69,7 @@ def test_good_fixture_pipeline_regression_cases():
         url = final_expected["url"]
 
         with patch("backend.app.main.call_ollama_review") as ollama_mock, patch(
-            "backend.app.main.requests.get", return_value=_MockHtmlResponse(html)
+            "backend.app.main.safe_get", return_value=_MockHtmlResponse(html)
         ):
             parser_result = main.fetch_recipe_data_from_url(url)
             _assert_parser_payload_matches_fixture(parser_result, parser_expected)

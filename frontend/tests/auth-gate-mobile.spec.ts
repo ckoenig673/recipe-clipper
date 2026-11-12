@@ -1,5 +1,29 @@
 import { expect, test } from '@playwright/test';
 
+async function stubAuthenticatedShell(page) {
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ id: 1, email: 'test@example.com' })
+    });
+  });
+  await page.route('**/api/recipes', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+  await page.route('**/api/cookbooks', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+}
+
+async function expectRootShareRouteToLoad(page, routePathAndQuery) {
+  const response = await page.goto(routePathAndQuery);
+  expect(response, `expected a document response for ${routePathAndQuery}`).not.toBeNull();
+  expect(response?.ok(), `expected ${routePathAndQuery} to return a successful HTML page`).toBeTruthy();
+  expect(response?.headers()['content-type'] || '').toContain('text/html');
+  await expect.poll(async () => page.evaluate(() => window.location.pathname)).toBe('/');
+}
+
 test('unauthenticated mobile session is locked to login screen', async ({ page, context }) => {
   await context.clearCookies();
   await page.addInitScript(() => {
@@ -31,27 +55,81 @@ test('share_target URL in shared_text routes to import mode and populates URL in
     window.localStorage.setItem('shared_text', url);
   }, sharedUrl);
 
-  await page.route('**/api/auth/me', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ id: 1, email: 'test@example.com' })
-    });
-  });
-  await page.route('**/api/recipes', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
-  });
-  await page.route('**/api/cookbooks', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
-  });
+  await stubAuthenticatedShell(page);
 
-  await page.goto('/?share_target=1');
+  await expectRootShareRouteToLoad(page, '/?share_target=1');
 
   await expect(page.locator('#add-recipe-modal')).toBeVisible();
   await expect(page.locator('#import-browser-panel')).toBeVisible();
   await expect(page.locator('#url')).toBeVisible();
   await expect(page.locator('#url')).toHaveValue(sharedUrl);
   await expect(page.locator('#paste-text-panel')).toBeHidden();
+});
+
+test('share_import query payload routes Android shares into the existing add recipe flow', async ({ page, context }) => {
+  const sharedUrl = 'https://www.example.com/recipes/best-brownies?ref=android-share&source=mobile';
+  const sharedTitle = 'Best Brownies';
+  const sharedText = 'Make these brownies tonight';
+
+  await context.clearCookies();
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+
+  await stubAuthenticatedShell(page);
+
+  const params = new URLSearchParams({
+    share_import: '1',
+    url: sharedUrl,
+    title: sharedTitle,
+    text: sharedText
+  });
+
+  await expectRootShareRouteToLoad(page, `/?${params.toString()}`);
+
+  await expect(page.locator('#add-recipe-modal')).toBeVisible();
+  await expect(page.locator('#import-browser-panel')).toBeVisible();
+  await expect(page.locator('#url')).toHaveValue(sharedUrl);
+  await expect(page.locator('#title')).toHaveValue(sharedTitle);
+  await expect(page.locator('#paste-text-panel')).toBeHidden();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('shared_url'))).toBeNull();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('shared_text'))).toBeNull();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('shared_title'))).toBeNull();
+  await expect.poll(async () => page.evaluate(() => window.location.search)).toBe('');
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('recipe_clipper_pending_share'))).toBeNull();
+});
+
+test('share_import text-only payload routes Android shares into pasted-text mode', async ({ page, context }) => {
+  const sharedTitle = 'Skillet Lasagna';
+  const sharedText = '1 lb ground beef\n2 cups marinara\nBoil pasta and combine everything.';
+
+  await context.clearCookies();
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+
+  await stubAuthenticatedShell(page);
+
+  const params = new URLSearchParams({
+    share_import: '1',
+    title: sharedTitle,
+    text: sharedText
+  });
+
+  await expectRootShareRouteToLoad(page, `/?${params.toString()}`);
+
+  await expect(page.locator('#add-recipe-modal')).toBeVisible();
+  await expect(page.locator('#paste-text-panel')).toBeVisible();
+  await expect(page.locator('#import-browser-panel')).toBeHidden();
+  await expect(page.locator('#paste-recipe-text')).toHaveValue(sharedText);
+  await expect(page.locator('#title')).toHaveValue(sharedTitle);
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('shared_url'))).toBeNull();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('shared_text'))).toBeNull();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('shared_title'))).toBeNull();
+  await expect.poll(async () => page.evaluate(() => window.location.search)).toBe('');
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('recipe_clipper_pending_share'))).toBeNull();
 });
 
 test('admin accounts access settings and admin users independently', async ({ page, context }) => {

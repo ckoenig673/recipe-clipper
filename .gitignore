@@ -37,10 +37,13 @@ frontend/tests/*.bak2
 
 # Local runtime artifacts
 .codex_runtime/
+.codex-remote-attachments/
 artifacts/review-packages/
+/backups/
 git-summary.txt
 review-package-manifest.txt
 notes.txt
+DOCS_REVIEW.md
 
 # Android
 /android-share-companion/.gradle/

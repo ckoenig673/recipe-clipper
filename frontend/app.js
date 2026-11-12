@@ -2549,7 +2549,9 @@ function hasUsableRecipeMetadata(payload) {
 
 function isNeedsReviewMetadataFallback(payload) {
   if (!payload || typeof payload !== "object") return false;
-  if (String(payload.status || "").toLowerCase() === "needs_review") return true;
+  if (["needs_review", "incomplete"].includes(String(payload.status || "").toLowerCase())) return true;
+  const { hasIngredients, hasInstructions } = hasParsedCoreContent(payload);
+  if (!hasIngredients && !hasInstructions) return true;
   return !hasUsableRecipeMetadata(payload);
 }
 
@@ -3432,10 +3434,14 @@ function formatAiCleanupQuantity(value) {
   const whole = Math.floor(value);
   const fractional = value - whole;
   const knownFractions = [
+    { value: 0.125, text: "1/8" },
     { value: 0.25, text: "1/4" },
     { value: 1 / 3, text: "1/3" },
+    { value: 0.375, text: "3/8" },
     { value: 0.5, text: "1/2" },
-    { value: 0.75, text: "3/4" }
+    { value: 0.625, text: "5/8" },
+    { value: 0.75, text: "3/4" },
+    { value: 0.875, text: "7/8" }
   ];
   const matchedFraction = knownFractions.find(({ value: known }) => Math.abs(fractional - known) < 0.01);
   if (matchedFraction) {

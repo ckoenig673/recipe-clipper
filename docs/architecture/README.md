@@ -1,51 +1,135 @@
 # Recipe Clipper Architecture
 
-Recipe Clipper `1.0.0` uses the V1 architecture: a simple Docker Compose deployment with isolated workers and optional AI enhancement.
+Recipe Clipper `1.0.0` uses a small Docker Compose architecture with one application backend and isolated workers for CPU-heavy or dependency-heavy import tasks.
 
-```mermaid
-flowchart LR
-    User[Browser / Android Share]
-    Frontend[frontend\nrecipe-clipper-frontend]
-    Backend[backend\nrecipe-clipper-backend]
-    SQLite[(SQLite\n./data/recipes.db)]
-    OCR[ocr\nrecipe-clipper-ocr]
-    Social[social\nrecipe-clipper-social]
-    Whisper[whisper\nrecipe-clipper-whisper]
-    Ollama[Ollama\noptional]
+![Recipe Clipper architecture](../screenshots/recipe-clipper-architecture.svg)
 
-    User --> Frontend
-    Frontend --> Backend
-    Backend --> SQLite
-    Backend -->|http://ocr:8787/ocr/image| OCR
-    Backend -->|http://social:8790/download/social-video| Social
-    Backend -->|http://whisper:8791/transcribe| Whisper
-    Backend -. optional AI cleanup/review .-> Ollama
-    Social --> Whisper
+## Components
+
+### Frontend
+
+The `frontend` service serves the vanilla JavaScript SPA through nginx.
+
+Responsibilities:
+
+- Authentication UI
+- Cookbook and recipe navigation
+- URL, image, pasted-text, and shared-recipe import workflows
+- Parsed recipe review and editing
+- AI Cleanup review
+- Meal planning and grocery lists
+- Admin and import settings
+- Import-service status display
+
+The frontend calls the backend through nginx under `/api/`.
+
+### Backend
+
+The `backend` service is the application orchestrator and system of record.
+
+Responsibilities:
+
+- Session authentication and administrator controls
+- Recipe and cookbook CRUD
+- SQLite persistence
+- Import orchestration
+- URL validation and safe outbound fetching
+- HTML parsing and sanitization
+- OCR and social-worker coordination
+- AI Cleanup and review state
+- Meal-plan and grocery-list APIs
+- Import-service health aggregation
+
+### SQLite
+
+SQLite is the V1 system of record. The database is mounted under `/app/data` in the backend container and persisted from the host `./data` directory.
+
+### OCR worker
+
+The `ocr` service accepts image uploads and returns OCR text through Tesseract.
+
+Default endpoint:
+
+```text
+http://ocr:8787/ocr/image
 ```
 
-## Service Communication
+### Social worker
 
-- `frontend` serves the SPA and talks to `backend` over the published backend API.
-- `backend` is the orchestrator. It owns auth, session handling, recipe CRUD, import flow state, AI review state, service status aggregation, and SQLite access.
-- `backend` calls worker endpoints by Docker Compose service name:
-  - `ocr` at `http://ocr:8787/ocr/image`
-  - `social` at `http://social:8790/download/social-video`
-  - `whisper` at `http://whisper:8791/transcribe`
-- `social` and `whisper` share downloaded media through the Compose-mounted `./data/social-downloads` volume.
-- SQLite storage is mounted from `./data` into the backend container and remains the V1 system of record.
-- Ollama is optional and is used only for AI cleanup and AI review enhancement. Core import, save, and edit flows must keep working without it.
+The `social` service downloads public social-video media with yt-dlp and stores the result in the shared social-download directory.
 
-## Configuration Map
+Default endpoint:
 
-- Host-published ports are configured with `FRONTEND_PORT`, `BACKEND_PORT`, `OCR_WORKER_PORT`, `SOCIAL_DOWNLOADER_PORT`, and `WHISPER_PROCESSOR_PORT`.
-- `SOCIAL_DOWNLOADER_PORT` and `WHISPER_PROCESSOR_PORT` are legacy-compatible variable names retained for the current `social` and `whisper` worker services.
-- Backend-to-worker routing is configured with `OCR_WORKER_URL`, `SOCIAL_DOWNLOADER_URL`, and `WHISPER_PROCESSOR_URL`. The social and whisper variable names are also legacy-compatible names retained by the runtime. In the default Compose setup these resolve by service name and usually should not be changed.
-- Shared social import artifacts are configured with `SOCIAL_VIDEO_TMP_DIR` and `SOCIAL_DOWNLOADER_OUTPUT_DIR`, both of which point at the mounted `./data/social-downloads` path by default.
-- Whisper worker defaults are configured with `WHISPER_MODEL`, `WHISPER_DEVICE`, and `WHISPER_COMPUTE_TYPE`.
-- Ollama integration is configured with `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `OLLAMA_TIMEOUT_SECONDS`. Leaving `OLLAMA_BASE_URL` blank disables Ollama-dependent features without breaking core recipe flows.
-- Auth bootstrap and browser session behavior are configured with `AUTH_BOOTSTRAP_ADMIN_EMAIL`, `AUTH_BOOTSTRAP_ADMIN_PASSWORD`, `AUTH_SESSION_TTL_HOURS`, `AUTH_COOKIE_NAME`, `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_DOMAIN`, and `CORS_ALLOW_ORIGINS`.
+```text
+http://social:8790/download/social-video
+```
 
-## Runtime Containers
+### Whisper worker
+
+The `whisper` service transcribes downloaded audio with faster-whisper.
+
+Default endpoint:
+
+```text
+http://whisper:8791/transcribe
+```
+
+The social and Whisper workers do not need to call each other directly. The backend orchestrates the stages, while both workers share the mounted media directory.
+
+### Ollama
+
+Ollama is optional. When configured, the backend uses it for AI Cleanup and review enhancement. Core recipe capture and organization must remain usable without Ollama.
+
+## Primary request flows
+
+### Standard URL import
+
+1. Frontend submits a public recipe URL.
+2. Backend validates the scheme, hostname, resolved address, and redirects.
+3. Backend downloads and sanitizes the page.
+4. Structured data and supported DOM recipe candidates are parsed.
+5. Frontend opens the parsed editor.
+6. The user may run AI Cleanup, edit the recipe, and save it.
+
+### Image OCR import
+
+1. Frontend uploads an image.
+2. Backend forwards the image to the OCR worker.
+3. OCR text is parsed deterministically.
+4. Optional AI processing may improve structure without discarding valid deterministic fields.
+5. Frontend opens the parsed editor.
+
+### Social-video transcript import
+
+1. Backend attempts normal social recipe URL resolution.
+2. When no external recipe is available, the backend calls the social worker.
+3. The downloaded media is stored in the shared volume.
+4. Backend calls the Whisper worker for transcription.
+5. Transcript text is classified and converted into a structured recipe.
+6. Explicit transcript evidence may conservatively repair suspicious extracted quantities.
+7. Frontend opens the parsed editor.
+
+### Saved-recipe AI Cleanup
+
+1. Backend loads the currently saved structured recipe.
+2. Source URL or saved transcript context is optional supporting evidence.
+3. AI returns a proposed structured recipe or a no-change result.
+4. Frontend displays only meaningful changed sections.
+5. The user explicitly applies or cancels the proposal.
+
+## Service communication
+
+Compose service names are used inside the Docker network:
+
+| Service | Internal role | Default internal endpoint |
+|---|---|---|
+| `frontend` | SPA and API proxy | `http://frontend` |
+| `backend` | FastAPI orchestrator | `http://backend:8000` |
+| `ocr` | OCR | `http://ocr:8787/ocr/image` |
+| `social` | Media download | `http://social:8790/download/social-video` |
+| `whisper` | Transcription | `http://whisper:8791/transcribe` |
+
+Runtime container names remain:
 
 - `recipe-clipper-frontend`
 - `recipe-clipper-backend`
@@ -53,45 +137,29 @@ flowchart LR
 - `recipe-clipper-social`
 - `recipe-clipper-whisper`
 
-## Compose Layout
+## Persistence and shared files
 
-The tracked root `docker-compose.yml` builds the runtime stack from these repository directories:
+- `./data/recipes.db` — SQLite database
+- `./data/social-downloads` — media shared by backend, social, and Whisper services
 
-- `./frontend`
-- `./backend`
-- `./ocr-worker`
-- `./social-worker`
-- `./whisper-worker`
+Generated data, media, logs, caches, and test output must remain outside version control.
 
-## V1 Stability Principles
+## Security boundaries
 
-Recipe Clipper is currently a V1 freeze candidate / pre-beta codebase. Changes should prioritize stability, deterministic behavior, and portable self-hosting over experimentation.
+- User-controlled outbound URLs pass through centralized public-URL validation.
+- Redirect targets are revalidated.
+- Private, loopback, link-local, reserved, metadata, and credential-bearing destinations are blocked.
+- Parsed hostname matching replaces security-sensitive substring checks.
+- Untrusted HTML is parsed and sanitized structurally.
+- User recipe text is rendered through safe DOM construction.
+- Internal exceptions are logged server-side and converted into stable client responses.
 
-### Import Flow Boundaries
+## V1 design principles
 
-- Keep the current staged import flow lightweight.
-- Do not introduce websocket progress systems, Redis queues, Celery, Kafka, or other distributed job infrastructure unless explicitly requested.
-- The current staged progress UX is the intended V1 behavior; improvements should stay limited to messaging, reset behavior, and failure visibility.
-
-### Worker Isolation
-
-- Keep OCR, social download, and Whisper transcription in their dedicated worker services.
-- Do not merge heavy worker dependencies back into the backend.
-
-### Optional Ollama
-
-- Ollama is enhancement-only.
-- Core recipe import, save, and edit flows must continue to work when Ollama is disabled, unreachable, or AI review is turned off.
-- Graceful degradation is preferred over hard failure when Ollama is unavailable.
-
-### Runtime Portability
-
-- Keep Docker Compose portable and self-host friendly.
-- Do not hardcode local IPs, private domains, user-specific filesystem paths, or secrets.
-- Keep runtime configuration in `.env` and `.env.example`.
-
-### Health Checks
-
-- Worker `/health` endpoints must stay lightweight and fast.
-- Health checks must not trigger OCR, downloads, transcription, or other heavy operations.
-- Backend status aggregation should call worker `/health` endpoints rather than operational endpoints.
+- Prefer a small, understandable self-hosted stack.
+- Keep SQLite as the V1 system of record.
+- Do not add Redis, Celery, Kafka, or WebSockets without a demonstrated need.
+- Preserve deterministic parsing and use AI as a reviewed enhancement.
+- Make source URL failures non-fatal to saved-recipe cleanup.
+- Add regression fixtures for real import defects.
+- Modularize the large backend and frontend files incrementally as future stories touch them.

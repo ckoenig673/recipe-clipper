@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" role="img" aria-labelledby="title desc">
+<title id="title">Recipe Clipper architecture overview</title>
+<desc id="desc">Browser and Android share connect to the frontend, which calls the backend. The backend stores recipes in SQLite and orchestrates OCR, social download, Whisper transcription, and optional Ollama AI cleanup.</desc>
+<style>
+  .title { font: 700 36px Arial, sans-serif; fill: #17202a; }
+  .subtitle { font: 400 18px Arial, sans-serif; fill: #566573; }
+  .box { fill: #ffffff; stroke: #34495e; stroke-width: 3; rx: 18; }
+  .worker { fill: #f8fbff; stroke: #2874a6; }
+  .store { fill: #fff8e7; stroke: #b9770e; }
+  .optional { fill: #f5eef8; stroke: #7d3c98; stroke-dasharray: 9 7; }
+  .label { font: 700 22px Arial, sans-serif; fill: #17202a; text-anchor: middle; }
+  .small { font: 400 16px Arial, sans-serif; fill: #566573; text-anchor: middle; }
+  .arrow { stroke: #34495e; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+  .dash { stroke-dasharray: 10 8; }
+  .volume { stroke: #b9770e; stroke-width: 3; stroke-dasharray: 8 6; fill: none; marker-end: url(#arrowGold); }
+  .caption { font: 600 15px Arial, sans-serif; fill: #34495e; text-anchor: middle; }
+</style>
+<defs>
+  <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+    <path d="M0,0 L12,6 L0,12 z" fill="#34495e"/>
+  </marker>
+  <marker id="arrowGold" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+    <path d="M0,0 L12,6 L0,12 z" fill="#b9770e"/>
+  </marker>
+</defs>
+
+<text x="750" y="58" class="title">Recipe Clipper — V1 Architecture</text>
+<text x="750" y="90" class="subtitle" text-anchor="middle">Self-hosted recipe capture, organization, and AI-assisted cleanup</text>
+
+<rect x="80" y="175" width="250" height="125" class="box"/>
+<text x="205" y="220" class="label">Browser / PWA</text>
+<text x="205" y="252" class="small">Desktop &amp; mobile</text>
+<text x="205" y="278" class="small">Android share target</text>
+
+<rect x="435" y="175" width="270" height="125" class="box"/>
+<text x="570" y="220" class="label">Frontend</text>
+<text x="570" y="252" class="small">nginx + vanilla JS SPA</text>
+<text x="570" y="278" class="small">recipe-clipper-frontend</text>
+
+<rect x="805" y="175" width="285" height="125" class="box"/>
+<text x="947.5" y="220" class="label">Backend API</text>
+<text x="947.5" y="252" class="small">FastAPI orchestration</text>
+<text x="947.5" y="278" class="small">recipe-clipper-backend</text>
+
+<rect x="1190" y="175" width="230" height="125" class="box store"/>
+<text x="1305" y="220" class="label">SQLite</text>
+<text x="1305" y="252" class="small">recipes.db</text>
+<text x="1305" y="278" class="small">persistent ./data</text>
+
+<path d="M330 237 L435 237" class="arrow"/>
+<text x="382" y="220" class="caption">HTTP</text>
+<path d="M705 237 L805 237" class="arrow"/>
+<text x="755" y="220" class="caption">/api</text>
+<path d="M1090 237 L1190 237" class="arrow"/>
+<text x="1140" y="220" class="caption">CRUD</text>
+
+<rect x="130" y="475" width="260" height="125" class="box worker"/>
+<text x="260" y="520" class="label">OCR Worker</text>
+<text x="260" y="552" class="small">Tesseract image OCR</text>
+<text x="260" y="578" class="small">recipe-clipper-ocr</text>
+
+<rect x="465" y="475" width="260" height="125" class="box worker"/>
+<text x="595" y="520" class="label">Social Worker</text>
+<text x="595" y="552" class="small">yt-dlp media download</text>
+<text x="595" y="578" class="small">recipe-clipper-social</text>
+
+<rect x="800" y="475" width="260" height="125" class="box worker"/>
+<text x="930" y="520" class="label">Whisper Worker</text>
+<text x="930" y="552" class="small">faster-whisper transcript</text>
+<text x="930" y="578" class="small">recipe-clipper-whisper</text>
+
+<rect x="1135" y="475" width="260" height="125" class="box optional"/>
+<text x="1265" y="520" class="label">Ollama</text>
+<text x="1265" y="552" class="small">Optional AI cleanup</text>
+<text x="1265" y="578" class="small">and review enhancement</text>
+
+<path d="M885 300 C800 370, 520 385, 300 475" class="arrow"/>
+<text x="565" y="390" class="caption">image import</text>
+
+<path d="M930 300 C830 370, 700 390, 625 475" class="arrow"/>
+<text x="770" y="390" class="caption">social download</text>
+
+<path d="M975 300 C985 365, 965 405, 945 475" class="arrow"/>
+<text x="1010" y="390" class="caption">transcribe</text>
+
+<path d="M1030 300 C1120 365, 1215 395, 1250 475" class="arrow dash"/>
+<text x="1165" y="390" class="caption">optional AI</text>
+
+<path d="M725 537 L800 537" class="volume"/>
+<text x="762" y="520" class="caption">shared media volume</text>
+
+<rect x="395" y="690" width="710" height="72" class="store"/>
+<text x="750" y="720" class="label">Import pipeline</text>
+<text x="750" y="748" class="small">URL / pasted text / OCR / social video → parsed editor → optional AI review → saved recipe</text>
+</svg>

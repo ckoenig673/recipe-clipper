@@ -203,6 +203,9 @@ test('OPTAVIA Mini Mac import + AI cleanup + save closes modal', async ({ page }
   await expect
     .poll(async () => arrayContainsSubstring(await ingredientValues(page), 'Dill Pickle'), { timeout: 60_000 })
     .toBeTruthy();
+  await expect
+    .poll(async () => page.locator('[data-testid="parsed-instruction-row"]').count(), { timeout: 60_000 })
+    .toBeGreaterThanOrEqual(3);
 
   await page.locator('#run-ai-cleanup-button').click();
   await waitForAiCleanupComplete(page);
@@ -223,6 +226,12 @@ test('OPTAVIA Mini Mac import + AI cleanup + save closes modal', async ({ page }
     .toBeTruthy();
   await expect
     .poll(async () => arrayContainsSubstring(await ingredientValues(page), 'Dill Pickle'), { timeout: 60_000 })
+    .toBeTruthy();
+  await expect
+    .poll(async () => arrayContainsSubstring(await ingredientValues(page), '1/8 teaspoon White Vinegar'), { timeout: 60_000 })
+    .toBeTruthy();
+  await expect
+    .poll(async () => arrayContainsSubstring(await ingredientValues(page), '1/8 teaspoon Onion Powder'), { timeout: 60_000 })
     .toBeTruthy();
 
   await page.locator('#add-recipe-submit-button').click();

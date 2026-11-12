@@ -1,8 +1,9 @@
 import socket
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+from curl_cffi import CurlOpt
 from requests.cookies import RequestsCookieJar
 
 from backend.app import main
@@ -12,6 +13,7 @@ from backend.app.url_validation import (
     _ResolvedPublicUrl,
     _ValidatedAddressAdapter,
     safe_get,
+    safe_impersonated_get,
     validate_public_url,
 )
 
@@ -128,6 +130,53 @@ def test_safe_get_revalidates_redirect_targets():
     ):
         with pytest.raises(PublicUrlValidationError, match=USER_FACING_PUBLIC_URL_ERROR):
             safe_get("https://example.com/start")
+
+
+def test_safe_impersonated_get_pins_request_to_validated_address():
+    session = MagicMock()
+    session.get.return_value = _MockResponse("https://example.com/recipe")
+
+    with patch("backend.app.url_validation.socket.getaddrinfo", return_value=_mock_addrinfo("93.184.216.34")), patch(
+        "backend.app.url_validation.curl_requests.Session",
+        return_value=session,
+    ) as session_factory:
+        response = safe_impersonated_get("https://example.com/recipe")
+
+    assert response.status_code == 200
+    session.get.assert_called_once_with(
+        "https://example.com/recipe",
+        headers=None,
+        timeout=8,
+        allow_redirects=False,
+    )
+    assert session_factory.call_args.kwargs["impersonate"] == "safari17_0"
+    assert session_factory.call_args.kwargs["curl_options"][CurlOpt.RESOLVE] == [
+        "example.com:443:93.184.216.34"
+    ]
+    session.close.assert_called_once_with()
+
+
+def test_safe_impersonated_get_revalidates_redirect_targets():
+    session = MagicMock()
+    session.get.return_value = _MockResponse(
+        "https://example.com/start",
+        status_code=302,
+        headers={"Location": "http://127.0.0.1/admin"},
+    )
+
+    def _fake_getaddrinfo(hostname, *_args, **_kwargs):
+        if hostname == "example.com":
+            return _mock_addrinfo("93.184.216.34")
+        if hostname == "127.0.0.1":
+            return _mock_addrinfo("127.0.0.1")
+        raise AssertionError(f"unexpected hostname: {hostname}")
+
+    with patch("backend.app.url_validation.socket.getaddrinfo", side_effect=_fake_getaddrinfo), patch(
+        "backend.app.url_validation.curl_requests.Session",
+        return_value=session,
+    ):
+        with pytest.raises(PublicUrlValidationError, match=USER_FACING_PUBLIC_URL_ERROR):
+            safe_impersonated_get("https://example.com/start")
 
 
 def test_safe_get_binds_https_request_to_validated_ipv4_address():

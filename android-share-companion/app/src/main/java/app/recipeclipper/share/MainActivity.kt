@@ -2,7 +2,6 @@ package app.recipeclipper.share
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.browser.customtabs.CustomTabsIntent
 
@@ -14,7 +13,7 @@ class MainActivity : Activity() {
     }
 
     private fun openWebApp() {
-        val uri = Uri.parse(Config.WEB_APP_BASE_URL)
+        val uri = Config.webAppBaseUri
         val customTabsIntent = CustomTabsIntent.Builder().build()
         customTabsIntent.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {

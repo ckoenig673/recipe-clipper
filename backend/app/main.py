@@ -36,7 +36,13 @@ from .social_video_pipeline import (
     YtDlpExtractError,
     run_social_video_transcript_pipeline,
 )
-from .url_validation import PublicUrlValidationError, USER_FACING_PUBLIC_URL_ERROR, safe_get, validate_public_url
+from .url_validation import (
+    PublicUrlValidationError,
+    USER_FACING_PUBLIC_URL_ERROR,
+    safe_get,
+    safe_impersonated_get,
+    validate_public_url,
+)
 
 SETTINGS_ENCRYPTION_KEY_ENV = "USER_SETTINGS_ENCRYPTION_KEY"
 
@@ -709,6 +715,14 @@ REQUEST_HEADERS = {
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
+}
+
+# Some recipe sites challenge fully specified browser signatures while still
+# serving their public recipe markup to a generic browser user agent.  Use this
+# only as a targeted retry after an explicit 403 response.
+RECIPE_403_RETRY_HEADERS = {
+    **REQUEST_HEADERS,
+    "User-Agent": "Mozilla/5.0",
 }
 
 MAX_AI_CLEANUP_SOURCE_CHARS = 8000
@@ -3332,7 +3346,7 @@ def _normalize_duration(value) -> tuple[str, int | None]:
 def _normalize_instructions(value) -> list[str]:
     if isinstance(value, str):
         text = _clean_text(value)
-        return [text] if text else []
+        return _normalize_instruction_steps([text]) if text else []
 
     if not isinstance(value, list):
         return []
@@ -3342,12 +3356,12 @@ def _normalize_instructions(value) -> list[str]:
         if isinstance(item, str):
             text = _clean_text(item)
             if text:
-                instructions.append(text)
+                instructions.extend(_normalize_instruction_steps([text]))
         elif isinstance(item, dict):
             instructions.extend(_normalize_instructions(item.get("itemListElement")))
             text = _clean_text(item.get("text") or item.get("name") or "")
             if text:
-                instructions.append(text)
+                instructions.extend(_normalize_instruction_steps([text]))
     return instructions
 
 
@@ -4108,7 +4122,7 @@ def _extract_instruction_groups_from_schema(value) -> tuple[list[dict], list[str
     if isinstance(value, str):
         text = _clean_text(value)
         if text:
-            flat_steps.append(text)
+            flat_steps.extend(_normalize_instruction_steps([text]))
         return groups, flat_steps
 
     if not isinstance(value, list):
@@ -4118,7 +4132,7 @@ def _extract_instruction_groups_from_schema(value) -> tuple[list[dict], list[str
         if isinstance(item, str):
             text = _clean_text(item)
             if text:
-                flat_steps.append(text)
+                flat_steps.extend(_normalize_instruction_steps([text]))
             continue
 
         if not isinstance(item, dict):
@@ -4142,7 +4156,7 @@ def _extract_instruction_groups_from_schema(value) -> tuple[list[dict], list[str
 
         text = _clean_text(item.get("text") or item.get("name") or "")
         if text:
-            flat_steps.append(text)
+            flat_steps.extend(_normalize_instruction_steps([text]))
 
         nested = _normalize_instructions(item.get("itemListElement"))
         if nested:
@@ -5341,6 +5355,10 @@ def _repair_saved_ingredient_lines_from_transcript(
             )
             continue
 
+        if re.match(r"^(?:\d+\s+)?\d+\s*/\s*\d+\b|^[½⅓¼¾⅔⅛⅜⅝⅞]", _clean_text(line)):
+            repaired_lines.append(_normalize_ai_cleanup_prompt_ingredient_line(line))
+            continue
+
         if suspicious_quantity:
             flagged_lines.append(_clean_text(line))
         repaired_lines.append(
@@ -5953,7 +5971,15 @@ def _normalize_ai_cleanup_prompt_ingredient_line(value) -> str:
             remainder_after_unit = remainder[unit_match.end() :].strip()
 
     name = re.sub(r"^of\s+", "", remainder_after_unit, flags=re.IGNORECASE).strip()
-    display_quantity = _format_display_quantity(quantity)
+    original_fraction = re.match(
+        r"^(?:\d+\s+)?\d+\s*/\s*\d+\b|^[½⅓¼¾⅔⅛⅜⅝⅞]",
+        working,
+    )
+    display_quantity = (
+        re.sub(r"\s*/\s*", "/", original_fraction.group(0)).strip()
+        if original_fraction
+        else _format_display_quantity(quantity)
+    )
     display_unit = _format_display_unit(unit, quantity)
     display_name = _clean_text(name)
 
@@ -6254,6 +6280,59 @@ def _prefer_or_merge_preview_instructions(preview_payload: dict, ai_preview_payl
     return merged_payload
 
 
+def _restore_preview_fraction_quantities(preview_payload: dict, ai_payload: dict) -> dict:
+    fraction_by_ingredient: dict[tuple[str, str], tuple[str, float]] = {}
+    for item in preview_payload.get("ingredients") or []:
+        text = _clean_text(item)
+        fraction_match = re.match(
+            r"^((?:\d+\s+)?\d+\s*/\s*\d+|[½⅓¼¾⅔⅛⅜⅝⅞])(?=\s|$)",
+            text,
+        )
+        if not fraction_match:
+            continue
+        parsed = _parse_ingredient_struct(text)
+        quantity = parsed.get("quantity")
+        name_key = _canonical_recipe_text(parsed.get("name") or "")
+        unit_key = _clean_text(parsed.get("unit") or "").lower()
+        if quantity is None or not name_key:
+            continue
+        fraction_text = re.sub(r"\s*/\s*", "/", fraction_match.group(1)).strip()
+        fraction_by_ingredient[(name_key, unit_key)] = (fraction_text, float(quantity))
+
+    if not fraction_by_ingredient:
+        return ai_payload
+
+    restored_groups: list[dict] = []
+    changed = False
+    for group in _normalize_groups(ai_payload.get("ingredient_groups") or [], "items"):
+        restored_items: list[str] = []
+        for item in group.get("items") or []:
+            text = _clean_text(item)
+            parsed = _parse_ingredient_struct(text)
+            name_key = _canonical_recipe_text(parsed.get("name") or "")
+            unit_key = _clean_text(parsed.get("unit") or "").lower()
+            original = fraction_by_ingredient.get((name_key, unit_key))
+            ai_quantity = parsed.get("quantity")
+            if original and ai_quantity is not None and abs(float(ai_quantity) - original[1]) < 0.000001:
+                restored = re.sub(
+                    r"^(?:(?:\d+\s+)?\d+\s*/\s*\d+|\d+(?:\.\d+)?|[½⅓¼¾⅔⅛⅜⅝⅞])(?=\s|$)",
+                    original[0],
+                    text,
+                    count=1,
+                )
+                changed = changed or restored != text
+                text = restored
+            restored_items.append(text)
+        restored_groups.append({"title": group.get("title") or "", "items": restored_items})
+
+    if not changed:
+        return ai_payload
+    restored_payload = dict(ai_payload)
+    restored_payload["ingredient_groups"] = restored_groups
+    restored_payload["ingredients"] = _flatten_groups(restored_groups, "items")
+    return restored_payload
+
+
 def _prefer_richer_preview_payload(preview_payload: dict, ai_preview_payload: dict) -> dict:
     sanitized_preview_payload = _sanitize_preview_ingredient_payload(preview_payload)
     merged_payload = _prefer_or_merge_preview_instructions(sanitized_preview_payload, ai_preview_payload)
@@ -6264,6 +6343,11 @@ def _prefer_richer_preview_payload(preview_payload: dict, ai_preview_payload: di
     if _should_prefer_preview_ingredients(sanitized_preview_payload, sanitized_merged_payload):
         sanitized_merged_payload["ingredient_groups"] = sanitized_preview_payload.get("ingredient_groups") or []
         sanitized_merged_payload["ingredients"] = sanitized_preview_payload.get("ingredients") or []
+
+    sanitized_merged_payload = _restore_preview_fraction_quantities(
+        sanitized_preview_payload,
+        sanitized_merged_payload,
+    )
 
     if ai_counts.get("instruction_groups", 0) < preview_counts.get("instruction_groups", 0):
         preview_instruction_groups = _normalize_groups(preview_payload.get("instruction_groups") or [], "steps")
@@ -6500,13 +6584,38 @@ def _normalize_instruction_steps(steps) -> list[str]:
         if not text:
             continue
 
-        numbered_parts = re.split(r"(?=\d+\.\s)", text)
-        if len(numbered_parts) > 1:
-            normalized.extend(
-                _clean_text(part)
-                for part in numbered_parts
-                if _clean_text(part)
+        markers: list[tuple[int, int]] = []
+        for marker in re.finditer(r"\d{1,3}\.", text):
+            marker_start = marker.start()
+            marker_end = marker.end()
+            if marker_end >= len(text) or not text[marker_end].isspace():
+                continue
+            if marker_start > 0:
+                separator_start = marker_start
+                while separator_start > 0 and text[separator_start - 1].isspace():
+                    separator_start -= 1
+                if separator_start == marker_start or separator_start == 0:
+                    continue
+                if text[separator_start - 1] not in ".!?":
+                    continue
+            markers.append((marker_start, int(marker.group(0)[:-1])))
+
+        marker_numbers = [number for _, number in markers]
+        has_complete_sequence = (
+            len(markers) > 1
+            and markers[0][0] == 0
+            and marker_numbers[0] == 1
+            and all(
+                current == previous + 1
+                for previous, current in zip(marker_numbers, marker_numbers[1:])
             )
+        )
+        if has_complete_sequence:
+            for index, (marker_start, _) in enumerate(markers):
+                end = markers[index + 1][0] if index + 1 < len(markers) else len(text)
+                part = _clean_text(text[marker_start:end])
+                if part:
+                    normalized.append(part)
             continue
 
         normalized.append(text)
@@ -7150,7 +7259,15 @@ def _normalize_ai_cleanup_prompt_ingredient_line(value) -> str:
     if not raw:
         return ""
     quantity, unit, name, notes = _parse_ingredient_core(raw)
-    display_quantity = _format_display_quantity(quantity)
+    original_fraction = re.match(
+        r"^(?:\d+\s+)?\d+\s*/\s*\d+\b|^[½⅓¼¾⅔⅛⅜⅝⅞]",
+        raw,
+    )
+    display_quantity = (
+        re.sub(r"\s*/\s*", "/", original_fraction.group(0)).strip()
+        if original_fraction
+        else _format_display_quantity(quantity)
+    )
     display_unit = _format_display_unit(unit, quantity)
     display_name = _clean_text(name)
     parts = [part for part in (display_quantity, display_unit, display_name) if part]
@@ -7765,15 +7882,31 @@ async def process_review_queue() -> None:
 
 
 def fetch_recipe_data_from_url(url: str) -> dict:
+    response = None
     try:
         response = safe_get(url, headers=REQUEST_HEADERS, timeout=8)
         response.raise_for_status()
-        content_type = response.headers.get("Content-Type", "")
-        if "text/html" not in content_type.lower():
-            return {}
-        html = response.text or ""
     except Exception:
+        if getattr(response, "status_code", None) != 403:
+            return {}
+        logger.info("recipe fetch received 403; retrying with generic browser user agent url=%s", url)
+        try:
+            response = safe_get(url, headers=RECIPE_403_RETRY_HEADERS, timeout=8)
+            response.raise_for_status()
+        except Exception:
+            if getattr(response, "status_code", None) != 403:
+                return {}
+            logger.info("recipe fetch still blocked; retrying with browser TLS fingerprint url=%s", url)
+            try:
+                response = safe_impersonated_get(url, headers=REQUEST_HEADERS, timeout=12)
+                response.raise_for_status()
+            except Exception:
+                return {}
+
+    content_type = response.headers.get("Content-Type", "")
+    if "text/html" not in content_type.lower():
         return {}
+    html = response.text or ""
 
     dom_data = _extract_dom_recipe_data(html)
     _, dom_prep_minutes = _normalize_duration(dom_data.get("prep_time", ""))
@@ -10378,6 +10511,26 @@ def extract_metadata(
         "prep_minutes": recipe_data.get("prep_minutes"),
         "cook_minutes": recipe_data.get("cook_minutes"),
         "total_minutes": recipe_data.get("total_minutes"),
+    }
+    ingredient_count = len(payload["ingredients"])
+    instruction_count = len(payload["instructions"])
+    # A page title or OpenGraph image alone is useful context, but it is not a
+    # usable recipe.  Make that distinction part of the API contract so the
+    # import UI does not present metadata-only pages as successfully parsed.
+    if not ingredient_count and not instruction_count:
+        payload["status"] = "incomplete"
+        payload["reason"] = (
+            "We found page details but no ingredients or instructions. "
+            "Try the recipe page directly or paste the recipe text."
+        )
+    else:
+        payload["status"] = "complete"
+    payload["extraction_diagnostics"] = {
+        "selected_source": recipe_data.get("_selected_source", ""),
+        "selected_reason": recipe_data.get("_selected_reason", ""),
+        "candidate_counts": recipe_data.get("_parser_counts", {}),
+        "ingredient_count": ingredient_count,
+        "instruction_count": instruction_count,
     }
     logger.info(
         "extract-metadata response summary normalized_url=%s selected_source=%s selected_reason=%s title=%s image=%s ingredients=%d instructions=%d ingredient_groups=%d instruction_groups=%d",

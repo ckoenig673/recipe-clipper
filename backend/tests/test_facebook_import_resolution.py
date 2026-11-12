@@ -688,7 +688,7 @@ def test_social_transcript_pipeline_prefers_recovered_recipe_url_when_mentioned_
         "backend.app.main._recover_recipe_url_from_transcript_mentions",
         return_value=(recovered_url, "transcript_direct_slug"),
     ), patch(
-        "backend.app.main.requests.get",
+        "backend.app.main.safe_get",
         return_value=_MockHtmlResponse(recovered_html),
     ):
         payload = main.extract_metadata(url=social_url, _={})
