@@ -1,0 +1,101 @@
+name: Bug report
+description: Report a reproducible problem in Recipe Clipper
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Recipe Clipper. Use synthetic examples and remove recipes, account details, hostnames, tokens, and other private data before submitting.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Recipe import or review
+        - Library or cookbooks
+        - Meal planning or groceries
+        - Authentication or administration
+        - Android share target
+        - Browser or PWA behavior
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v1.0.0 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment method
+      options:
+        - Docker Compose
+        - Local development environment
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: Browser or client
+      placeholder: Chrome 142, Firefox 144, Android share target
+    validations:
+      required: true
+  - type: dropdown
+    id: import_method
+    attributes:
+      label: Import method
+      description: Select Not applicable if the problem is outside recipe import.
+      options:
+        - Public recipe URL
+        - Pasted text
+        - Image or OCR
+        - Public social video
+        - Android share target
+        - Not applicable
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open...
+        2. Select...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Do not include secrets, tokens, private hosts, internal IPs, account details, or personal recipe data.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: I removed personal data, secrets, private hosts, and machine-specific paths from this report.
+          required: true
+        - label: I can reproduce the problem consistently or described why reproduction is intermittent.
+          required: true
