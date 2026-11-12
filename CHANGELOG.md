@@ -1,8 +1,8 @@
 # Changelog
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-11-12
 
-Initial public release baseline. The release remains unreleased until the protected `main` commit is tagged and a matching GitHub release is published.
+Initial public release baseline.
 
 - Added recipe import support for public URLs, pasted full-text recipes, uploaded images with OCR, shared social-video links, and fully manual recipe entry.
 - Added optional AI Cleanup for saved recipes, including a review flow that shows structured proposed changes before users apply them.
