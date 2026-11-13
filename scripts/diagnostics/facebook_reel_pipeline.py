@@ -48,7 +48,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 try:
     import requests
@@ -464,6 +464,17 @@ def build_search_query(title: str, domain: str) -> str:
     return f"{title} site:{domain}".strip() if title and domain else f"{title} {domain}".strip()
 
 
+def unwrap_search_result_url(value: str) -> str:
+    absolute_url = urljoin("https://html.duckduckgo.com/", (value or "").strip())
+    parsed = urlparse(absolute_url)
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if host == "duckduckgo.com" or host.endswith(".duckduckgo.com"):
+        destination = (parse_qs(parsed.query).get("uddg") or [""])[0]
+        if destination:
+            return unquote(destination).strip()
+    return absolute_url
+
+
 def ddg_search(query: str, max_results: int = 10) -> List[Dict[str, str]]:
     if requests is None or BeautifulSoup is None:
         raise RuntimeError("Install dependencies: py -m pip install requests beautifulsoup4")
@@ -484,7 +495,7 @@ def ddg_search(query: str, max_results: int = 10) -> List[Dict[str, str]]:
         if not link_tag:
             continue
 
-        href = link_tag.get("href") or ""
+        href = unwrap_search_result_url(link_tag.get("href") or "")
         title = " ".join(link_tag.get_text(" ", strip=True).split())
         snippet = " ".join(snippet_tag.get_text(" ", strip=True).split()) if snippet_tag else ""
 
@@ -541,6 +552,13 @@ def fetch_page(url: str) -> str:
     return resp.text
 
 
+def is_recipe_jsonld_node(node: Any) -> bool:
+    if not isinstance(node, dict):
+        return False
+    node_types = node.get("@type")
+    return node_types == "Recipe" or (isinstance(node_types, list) and "Recipe" in node_types)
+
+
 def extract_page_signals(html: str) -> Dict[str, Any]:
     if BeautifulSoup is None:
         raise RuntimeError("Install dependencies: py -m pip install beautifulsoup4")
@@ -576,7 +594,7 @@ def extract_page_signals(html: str) -> Dict[str, Any]:
 
     for block in jsonld_blocks:
         for node in walk(block):
-            if isinstance(node, dict) and node.get("@type") == "Recipe":
+            if is_recipe_jsonld_node(node):
                 recipe_jsonld.append(node)
 
     recipe_node = recipe_jsonld[0] if recipe_jsonld else {}
