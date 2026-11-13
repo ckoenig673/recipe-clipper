@@ -10,6 +10,7 @@
 - [Manual smoke checklist](development/manual-smoke-checklist.md)
 - [Good fixture guidelines](development/good-fixture-guidelines.md)
 - [Dependency and container pinning](development/dependency-locks.md)
+- [Version 2 backlog](development/v2-backlog.md)
 - [Screenshot standards](screenshots/README.md)
 - [Release process](releases/README.md)
 - [Version 1.0.0 release notes](releases/v1.0.0.md)
