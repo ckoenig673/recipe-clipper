@@ -38,6 +38,9 @@ frontend/tests/*.bak2
 # Local runtime artifacts
 .codex_runtime/
 .codex-remote-attachments/
+fb_recipe_debug_output/
+cookies.txt
+cookies-*.txt
 artifacts/review-packages/
 /backups/
 git-summary.txt
