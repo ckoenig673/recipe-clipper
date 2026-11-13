@@ -110,6 +110,11 @@ def canonical_domain(value: str) -> str:
     return netloc
 
 
+def is_facebook_domain(value: str) -> bool:
+    domain = canonical_domain(value).lower().rstrip(".")
+    return domain == "facebook.com" or domain.endswith(".facebook.com")
+
+
 def extract_urls_and_domains(text: str) -> List[str]:
     found: List[str] = []
 
@@ -277,7 +282,7 @@ def collect_candidate_sites(transcript: str, metadata: Dict[str, Any], recipe_js
             chunks.append(item)
 
     urls = extract_urls_and_domains("\n".join(chunks))
-    urls.sort(key=lambda u: ("facebook.com" in canonical_domain(u), canonical_domain(u), u))
+    urls.sort(key=lambda u: (is_facebook_domain(u), canonical_domain(u), u))
     return urls
 
 
