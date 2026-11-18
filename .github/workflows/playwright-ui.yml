@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   test:
+    name: Playwright UI tests
     # Playwright 1.59 does not yet provide Chromium dependencies for Ubuntu
     # 26.04, which ubuntu-latest currently resolves to.
     runs-on: ubuntu-24.04
